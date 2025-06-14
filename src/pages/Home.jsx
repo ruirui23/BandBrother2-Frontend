@@ -19,11 +19,28 @@ const Home = () => {
     return () => unsubscribe();
   }, []);
 
+  // Firebase新規登録後にバックエンドへユーザー作成リクエストを送る関数
+  const sendUserToBackend = async (user) => {
+    await fetch(`${import.meta.env.VITE_RAILS_URL}/api/user/${user.uid}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: user.email,
+        // 必要に応じて他のユーザーデータも追加
+      }),
+    });
+  };
+
   const handleEmailLogin = async () => {
     setError('');
     try {
+      let createdUser = null;
       if (isRegister) {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        createdUser = userCredential.user;
+        await sendUserToBackend(createdUser);
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
