@@ -77,6 +77,7 @@ const Home = () => {
           <button onClick={handleLogout} style={{ background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4, padding: '8px 24px', fontSize: 16, cursor: 'pointer', marginBottom: 16 }}>ログアウト</button>
           <button onClick={() => navigate('/select/tutorial')} style={{ background: '#43a047', color: '#fff', border: 'none', borderRadius: 4, padding: '10px 32px', fontSize: 18, cursor: 'pointer', marginBottom: 12 }}>1人でプレイ</button>
           <button onClick={() => navigate('/two-player-select')} style={{ background: '#fbc02d', color: '#333', border: 'none', borderRadius: 4, padding: '10px 32px', fontSize: 18, cursor: 'pointer' }}>2人でプレイ</button>
+          <button onClick={() => nav('/match')} className="px-6 py-3 rounded-xl bg-green-500 text-lg" style={{ background: '#8e24aa', color: '#fff', border: 'none', borderRadius: 4, padding: '10px 32px', fontSize: 18, cursor: 'pointer', marginTop: 16 }}>マッチング</button>
         </div>
       ) : (
         <button onClick={() => setShowLogin(true)} style={{ background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4, padding: '8px 24px', fontSize: 16, cursor: 'pointer', margin: 24 }}>ログイン</button>
