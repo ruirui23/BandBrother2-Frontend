@@ -10,7 +10,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/select/:musicId" element={<SelectDifficulty />} />
-        <Route path="/play/:musicId/:difficulty" element={<Play />} />
+        <Route path="/play/:musicId/:difficulty" element={<Play />}   key={Date.now()} />
         <Route path="/result" element={<Result />} />
       </Routes>
     </BrowserRouter>
