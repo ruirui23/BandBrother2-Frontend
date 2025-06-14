@@ -11,6 +11,12 @@ export default function Home() {
       >
         1人プレイ
       </button>
+      <button
+        className="px-6 py-3 rounded-xl bg-pink-500 text-white text-lg"
+        onClick={() => nav('/two-player-select')}
+      >
+        二人プレイ
+      </button>
     </div>
   );
 }
