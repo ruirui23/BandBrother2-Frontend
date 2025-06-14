@@ -60,29 +60,23 @@ export default function TwoPlayerPlay() {
   // ノーツ通過でmiss
   useEffect(() => {
     if (!started) return;
-    setCounts1(counts => {
-      let add = 0;
-      state1.forEach(n => {
-        if (!n.hit && time - n.time > 0.2 && !n.missed) {
-          n.missed = true;
-          add++;
-        }
-      });
-      if (add > 0) setScore1(s => s - 2 * add);
-      return add > 0 ? { ...counts, miss: counts.miss + add } : counts;
-    });
-    setCounts2(counts => {
-      let add = 0;
-      state2.forEach(n => {
-        if (!n.hit && time - n.time > 0.2 && !n.missed) {
-          n.missed = true;
-          add++;
-        }
-      });
-      if (add > 0) setScore2(s => s - 2 * add);
-      return add > 0 ? { ...counts, miss: counts.miss + add } : counts;
-    });
-  }, [time, started, state1, state2]);
+    setState1(arr => arr.map(n => {
+      if (!n.hit && !n.missed && time - n.time > 0.2) {
+        setCounts1(c => ({ ...c, miss: c.miss + 1 }));
+        setScore1(s => s - 2);
+        return { ...n, missed: true };
+      }
+      return n;
+    }));
+    setState2(arr => arr.map(n => {
+      if (!n.hit && !n.missed && time - n.time > 0.2) {
+        setCounts2(c => ({ ...c, miss: c.miss + 1 }));
+        setScore2(s => s - 2);
+        return { ...n, missed: true };
+      }
+      return n;
+    }));
+  }, [time, started]);
 
   // 判定
   const onKey = useCallback(
