@@ -58,6 +58,7 @@ const Home = () => {
     const provider = new GithubAuthProvider();
     try {
       await signInWithPopup(auth, provider);
+      await sendUserToBackend(auth.currentUser);
       setShowLogin(false);
     } catch (error) {
       if (error.code === 'auth/account-exists-with-different-credential') {
