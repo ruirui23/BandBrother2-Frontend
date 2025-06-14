@@ -86,6 +86,17 @@ export default function Play() {
     return () => window.removeEventListener('keydown', onKey);
   }, [onKey]);
 
+  // ノーツ通過でmiss
+  useEffect(() => {
+    if (!started) return;
+    notes.forEach((n, i) => {
+      if (!n.hit && time - n.time > 0.2 && !n.missed) {
+        n.missed = true;
+        add('miss');
+      }
+    });
+  }, [time, started, notes, add]);
+
   /* ---------- 描画対象ノーツ ---------- */
   // 描画対象ノーツ（画面内のみ表示）
   const visible = notes.filter(
