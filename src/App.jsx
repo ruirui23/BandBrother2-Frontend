@@ -18,6 +18,8 @@ export default function App() {
         <Route path="/match" element={<MatchRoom/>} />
         <Route path="/two-player-select" element={<TwoPlayerSelect />} />
         <Route path="/play2/:musicId/:p1/:p2" element={<TwoPlayerPlay />} />
+        <Route path="/two-player-select" element={<TwoPlayerSelect />} />
+        <Route path="/play2/:musicId/:p1/:p2" element={<TwoPlayerPlay />} />
       </Routes>
     </BrowserRouter>
   );
