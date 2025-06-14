@@ -1,29 +1,66 @@
-import { Route } from "react-router-dom";  
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const MatchRoom = () => {
+  const [isMatching, setIsMatching] = useState(false);
   const navigate = useNavigate();
-  
+
   const handleOnClick = () => {
-    console.log("Button clicked!");
-    // ここでマッチング処理を実行する
-    // 例えば、APIを呼び出してマッチングを開始するなど
-    // ここではダミーの処理として、コンソールにメッセージを表示します
-    alert("マッチングを開始します！");
-    // 実際のマッチング処理をここに追加
-    // 例えば、APIを呼び出してマッチングを開始するなど
-    console.log("マッチング処理を開始しました");
-    // ここでマッチングが成功した場合の処理を追加することもできます
-    // 例えば、マッチング成功後に別のページに遷移するなど
-    // window.location.href = '/some-other-page'; // 例: マッチング成功後に別のページへ遷移
-    // ここではダミーの処理として、コンソールにメッセージを表示します
-    console.log("マッチング処理が完了しました");
-    navigate("/game");
+    setIsMatching(true);
+    fetch(`${import.meta.env.VITE_RAILS_URL}/api/matchmaking/join`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error("キュー追加失敗");
+        // キュー追加成功後にポーリング開始
+        const intervalId = setInterval(() => {
+          fetch(`${import.meta.env.VITE_RAILS_URL}/api/notify_match`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              if (data.matched && data.roomId) {
+                clearInterval(intervalId);
+                setIsMatching(false);
+                navigate(`/select-difficulty/${data.roomId}`);
+              }
+            })
+            .catch((err) => {
+              console.error(err);
+            });
+        }, 1000); // 1秒ごとにポーリング
+      })
+      .catch((err) => {
+        setIsMatching(false);
+        alert("マッチングキュー追加に失敗しました");
+        console.error(err);
+      });
   };
+
   return (
     <div>
       <h1 className="text-4xl font-bold text-center mt-10">マッチングルーム</h1>
-      <button onClick={handleOnClick}>マッチングする！</button>
+      {isMatching && (
+        <div className="text-center mt-10">
+          <p>マッチング中...</p>
+        </div>
+      )}
+      {!isMatching && (
+        <>
+          <div className="text-center mt-10">
+            <p>マッチングを開始するにはボタンをクリックしてください。</p>
+          </div>
+          <button onClick={handleOnClick}>マッチングする！</button>
+        </>
+      )}
     </div>
   );
 };

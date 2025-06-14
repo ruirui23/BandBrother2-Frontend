@@ -5,6 +5,7 @@ import Play from './pages/Play.jsx';
 import Result from "./pages/Result.jsx";
 import TwoPlayerSelect from './pages/TwoPlayerSelect.jsx';
 import TwoPlayerPlay from './pages/TwoPlayerPlay.jsx';
+import MatchRoom from './pages/MatchRoom.jsx';
 
 export default function App() {
   return (
