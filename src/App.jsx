@@ -5,6 +5,9 @@ import Play from './pages/Play.jsx';
 import Result from "./pages/Result.jsx";
 import TwoPlayerSelect from './pages/TwoPlayerSelect.jsx';
 import TwoPlayerPlay from './pages/TwoPlayerPlay.jsx';
+import TwoPlayerPlayCustom from './pages/TwoPlayerPlayCustom.jsx';
+import ChartEditor from './pages/ChartEditor.jsx';
+import PlayCustom from './pages/PlayCustom.jsx';
 import MatchRoom from './pages/MatchRoom.jsx';
 
 export default function App() {
@@ -20,6 +23,9 @@ export default function App() {
         <Route path="/play2/:musicId/:p1/:p2" element={<TwoPlayerPlay />} />
         <Route path="/two-player-select" element={<TwoPlayerSelect />} />
         <Route path="/play2/:musicId/:p1/:p2" element={<TwoPlayerPlay />} />
+        <Route path="/chart-editor" element={<ChartEditor />} />
+        <Route path="/play/custom/:chartId" element={<PlayCustom />} />
+        <Route path="/play2/custom/:c1/:c2" element={<TwoPlayerPlayCustom />} />
       </Routes>
     </BrowserRouter>
   );

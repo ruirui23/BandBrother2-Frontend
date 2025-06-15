@@ -19,6 +19,28 @@ const Home = () => {
     return () => unsubscribe();
   }, []);
 
+  // エラーコードを日本語に変換する関数
+  const getErrorMessage = (error) => {
+    if (!error) return '';
+    if (typeof error === 'string') return error;
+    switch (error.code) {
+      case 'auth/invalid-email':
+        return 'メールアドレスの形式が正しくありません。';
+      case 'auth/user-not-found':
+        return 'ユーザーが見つかりません。';
+      case 'auth/wrong-password':
+        return 'パスワードが間違っています。';
+      case 'auth/email-already-in-use':
+        return 'このメールアドレスは既に登録されています。';
+      case 'auth/weak-password':
+        return 'パスワードは6文字以上で入力してください。';
+      case 'auth/account-exists-with-different-credential':
+        return 'このメールアドレスは他の認証方法ですでに登録されています。メールアドレスとパスワードでログインしてください。';
+      default:
+        return error.message || '認証エラーが発生しました。';
+    }
+  };
+
   const handleEmailLogin = async () => {
     setError('');
     try {
@@ -32,7 +54,7 @@ const Home = () => {
       setPassword('');
       setIsRegister(false);
     } catch (error) {
-      setError(error.message || 'エラーが発生しました');
+      setError(getErrorMessage(error));
     }
   };
 
@@ -44,22 +66,9 @@ const Home = () => {
       setShowLogin(false);
     } catch (error) {
       if (error.code === 'auth/account-exists-with-different-credential') {
-        // 既存の認証方法を取得して案内
-        const email = error.customData && error.customData.email;
-        let msg = 'このメールアドレスは他の認証方法ですでに登録されています。';
-        if (email) {
-          try {
-            const methods = await fetchSignInMethodsForEmail(auth, email);
-            if (methods.includes('password')) {
-              msg += '\nメールアドレスとパスワードでログインしてください。ログイン後、アカウント設定からGitHub連携が可能です。';
-            } else if (methods.length > 0) {
-              msg += `\n利用可能な認証方法: ${methods.join(', ')}`;
-            }
-          } catch {}
-        }
-        setError(msg);
+        setError(getErrorMessage(error));
       } else {
-        setError(error.message || 'GitHubログインに失敗しました');
+        setError(getErrorMessage(error));
       }
     }
   };
@@ -70,14 +79,16 @@ const Home = () => {
 
   return (
     <div className="home" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-      <h1>Welcome to Band Brother 2</h1>
+      <h1>ログインしてください</h1>
       {user ? (
         <div style={{ margin: 24, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <p>ログイン中: {user.email || user.displayName}</p>
           <button onClick={handleLogout} style={{ background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4, padding: '8px 24px', fontSize: 16, cursor: 'pointer', marginBottom: 16 }}>ログアウト</button>
           <button onClick={() => navigate('/select/tutorial')} style={{ background: '#43a047', color: '#fff', border: 'none', borderRadius: 4, padding: '10px 32px', fontSize: 18, cursor: 'pointer', marginBottom: 12 }}>1人でプレイ</button>
-          <button onClick={() => navigate('/two-player-select')} style={{ background: '#fbc02d', color: '#333', border: 'none', borderRadius: 4, padding: '10px 32px', fontSize: 18, cursor: 'pointer' }}>2人でプレイ</button>
+          <button onClick={() => navigate('/two-player-select')} style={{ background: '#fbc02d', color: '#333', border: 'none', borderRadius: 4, padding: '10px 32px', fontSize: 18, cursor: 'pointer', marginBottom: 12 }}>2人でプレイ</button>
+          <button onClick={() => navigate('/chart-editor')} style={{ background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4, padding: '10px 32px', fontSize: 18, cursor: 'pointer' }}>譜面作成</button>
           <button onClick={() => nav('/match')} className="px-6 py-3 rounded-xl bg-green-500 text-lg" style={{ background: '#8e24aa', color: '#fff', border: 'none', borderRadius: 4, padding: '10px 32px', fontSize: 18, cursor: 'pointer', marginTop: 16 }}>マッチング</button>
+
         </div>
       ) : (
         <button onClick={() => setShowLogin(true)} style={{ background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4, padding: '8px 24px', fontSize: 16, cursor: 'pointer', margin: 24 }}>ログイン</button>
