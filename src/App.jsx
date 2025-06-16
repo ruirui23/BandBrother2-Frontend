@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Home from './pages/Home.jsx';
 import SelectDifficulty from './pages/SelectDifficulty.jsx';
 import SelectDifficultyMulti from './pages/SelectDifficultyMulti.jsx';
@@ -6,22 +6,49 @@ import Play from './pages/Play.jsx';
 import Result from "./pages/Result.jsx";
 import TwoPlayerSelect from './pages/TwoPlayerSelect.jsx';
 import TwoPlayerPlay from './pages/TwoPlayerPlay.jsx';
+import TwoPlayerPlayCustom from './pages/TwoPlayerPlayCustom.jsx';
+import ChartEditor from './pages/ChartEditor.jsx';
+import PlayCustom from './pages/PlayCustom.jsx';
 import MatchRoom from './pages/MatchRoom.jsx';
 import MultiPlay from './pages/MultiPlay.jsx';
+import { auth } from './firebase';
+import { useEffect, useState } from 'react';
+
+function RequireAuth({ children }) {
+  const [user, setUser] = useState(auth.currentUser);
+  const location = useLocation();
+  useEffect(() => {
+    const unsub = auth.onAuthStateChanged(u => setUser(u));
+    return () => unsub();
+  }, []);
+  if (user === undefined) return null;
+  if (!user) return <Navigate to="/" state={{ from: location }} replace />;
+  return children;
+}
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/select/:musicId" element={<SelectDifficulty />} />
+        <Route path="/select" element={
+          <RequireAuth><SelectDifficulty /></RequireAuth>
+        } />
+        <Route path="/select/:musicId" element={
+          <RequireAuth><SelectDifficulty /></RequireAuth>
+        } />
         <Route path="/select-difficulty/:roomId" element={<SelectDifficultyMulti />} />
-        <Route path="/play/:musicId/:difficulty" element={<Play />} />
+        <Route path="/play/:musicId/:difficulty" element={
+          <RequireAuth><Play /></RequireAuth>
+        } />
         <Route path="/multi-play/:roomId/:difficulty" element={<MultiPlay />} />
         <Route path="/result" element={<Result />} />
-        <Route path="/match" element={<MatchRoom/>} />
-        <Route path="/two-player-select" element={<TwoPlayerSelect />} />
-        <Route path="/play2/:musicId/:p1/:p2" element={<TwoPlayerPlay />} />
+        <Route path="/match" element={<RequireAuth><MatchRoom/></RequireAuth>} />
+        <Route path="/two-player-select" element={<RequireAuth><TwoPlayerSelect /></RequireAuth>} />
+        <Route path="/play2/:musicId/:p1/:p2" element={<RequireAuth><TwoPlayerPlay /></RequireAuth>} />
+        <Route path="/chart-editor" element={<RequireAuth><ChartEditor /></RequireAuth>} />
+        <Route path="/play/custom/:chartId" element={<RequireAuth><PlayCustom /></RequireAuth>} />
+        <Route path="/play2/custom/:c1/:c2" element={<RequireAuth><TwoPlayerPlayCustom /></RequireAuth>} />
       </Routes>
     </BrowserRouter>
   );

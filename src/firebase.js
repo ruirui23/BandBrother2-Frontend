@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBEaGNPnuwDc8XM0wVLm9CKwzr_fujc8lU",
@@ -13,5 +14,6 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+export const db = getFirestore(app);
 // AnalyticsはSSRや一部環境でエラーになるためコメントアウト
 // const analytics = getAnalytics(app);
