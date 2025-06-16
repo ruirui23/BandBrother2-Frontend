@@ -2,6 +2,51 @@ import { Link, useLocation } from 'react-router-dom';
 
 export default function Result() {
   const { state } = useLocation();
+  
+  // マルチプレイ用の結果表示
+  if (state && state.isMultiPlayer) {
+    const { counts = {}, score = 0, opponentScore = 0 } = state;
+    let result = '';
+    if (score > opponentScore) {
+      result = 'WIN';
+    } else if (score < opponentScore) {
+      result = 'LOSE';
+    } else {
+      result = 'DRAW';
+    }
+    
+    return (
+      <div className="h-screen flex flex-col items-center justify-center gap-6 bg-slate-900 text-white">
+        <h1 className="text-3xl font-bold">MATCH RESULT</h1>
+        <div className="text-6xl font-bold mb-4" style={{
+          color: result === 'WIN' ? '#4CAF50' : result === 'LOSE' ? '#F44336' : '#FF9800'
+        }}>
+          {result}
+        </div>
+        <div className="flex gap-12">
+          <div className="space-y-1 text-xl">
+            <div className="font-bold text-blue-300">あなた</div>
+            <div>Perfect: {counts.perfect ?? 0}</div>
+            <div>Good&nbsp;&nbsp;: {counts.good ?? 0}</div>
+            <div>Miss&nbsp;&nbsp;: {counts.miss ?? 0}</div>
+            <hr className="my-2 border-gray-500" />
+            <div className="text-2xl font-bold">Score: {score}</div>
+          </div>
+          <div className="space-y-1 text-xl">
+            <div className="font-bold text-red-300">相手</div>
+            <div className="text-2xl font-bold">Score: {opponentScore}</div>
+          </div>
+        </div>
+        <Link
+          to="/"
+          className="px-6 py-3 bg-blue-500 rounded-lg text-white hover:bg-blue-600"
+        >
+          ホームに戻る
+        </Link>
+      </div>
+    );
+  }
+  
   // 二人プレイ用のスコア・判定があれば両方表示
   if (state && state.counts1 && state.counts2) {
     const c1 = state.counts1;
