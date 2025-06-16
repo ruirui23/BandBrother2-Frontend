@@ -98,18 +98,25 @@ export default function Play() {
   }, [time, started, notes, add]);
 
   /* ---------- 描画対象ノーツ ---------- */
-  // 描画対象ノーツ（画面内のみ表示）
+  // ノーツを右端から左端へ流す
+  const screenW = window.innerWidth;
   const visible = notes.filter(
-    n => !n.hit && n.time - time < WINDOW_SEC && (HIT_X + (n.time - time - offset) * NOTE_SPEED) > -100 && (HIT_X + (n.time - time - offset) * NOTE_SPEED) < window.innerWidth + 100
+    n => !n.hit && n.time - time < WINDOW_SEC && n.time - time > -1.5
   );
 
   /* ---------- 描画 ---------- */
   return (
-    <div className="relative h-screen overflow-hidden bg-black">
+    <div className="relative h-screen overflow-hidden bg-black flex flex-col items-center justify-center">
+      <button
+        className="absolute left-4 top-4 px-4 py-2 bg-gray-600 text-white rounded z-30"
+        onClick={() => nav(-1)}
+      >戻る</button>
+      {/* ノーツ表示 */}
       {visible.map((n) => (
         <Note
           key={n.time}
-          x={HIT_X + (n.time - time - offset) * NOTE_SPEED} // 右→左移動
+          x={HIT_X + (n.time - time - offset) * NOTE_SPEED}
+          yOffset={0}
         />
       ))}
       <HitLine />

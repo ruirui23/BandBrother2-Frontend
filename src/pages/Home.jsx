@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { auth } from '../firebase';
 import { signInWithEmailAndPassword, signOut, GithubAuthProvider, signInWithPopup, onAuthStateChanged, createUserWithEmailAndPassword, fetchSignInMethodsForEmail } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
+import { FaUserCircle, FaSignInAlt, FaSignOutAlt, FaMusic, FaGamepad, FaPlus, FaGithub } from 'react-icons/fa';
 
 const Home = () => {
   const [showLogin, setShowLogin] = useState(false);
@@ -78,64 +79,94 @@ const Home = () => {
   };
 
   return (
-    <div className="home" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-      <h1>ログインしてください</h1>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-black via-gray-900 to-blue-900">
+      <h1 className="text-5xl font-extrabold text-white mb-10 drop-shadow-lg tracking-widest select-none">
+        <FaMusic className="inline mr-2 text-yellow-400 animate-pulse" />
+        バンドブラザー2
+      </h1>
       {user ? (
-        <div style={{ margin: 24, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <p>ログイン中: {user.email || user.displayName}</p>
-          <button onClick={handleLogout} style={{ background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4, padding: '8px 24px', fontSize: 16, cursor: 'pointer', marginBottom: 16 }}>ログアウト</button>
-          <button onClick={() => navigate('/select/tutorial')} style={{ background: '#43a047', color: '#fff', border: 'none', borderRadius: 4, padding: '10px 32px', fontSize: 18, cursor: 'pointer', marginBottom: 12 }}>1人でプレイ</button>
-          <button onClick={() => navigate('/two-player-select')} style={{ background: '#fbc02d', color: '#333', border: 'none', borderRadius: 4, padding: '10px 32px', fontSize: 18, cursor: 'pointer', marginBottom: 12 }}>2人でプレイ</button>
-          <button onClick={() => navigate('/chart-editor')} style={{ background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4, padding: '10px 32px', fontSize: 18, cursor: 'pointer' }}>譜面作成</button>
-          <button onClick={() => nav('/match')} className="px-6 py-3 rounded-xl bg-green-500 text-lg" style={{ background: '#8e24aa', color: '#fff', border: 'none', borderRadius: 4, padding: '10px 32px', fontSize: 18, cursor: 'pointer', marginTop: 16 }}>マッチング</button>
-
+        <div className="flex flex-col gap-6 items-center w-full max-w-xs">
+          <button
+            className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white text-xl font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
+            onClick={() => navigate('/select')}
+          >
+            <FaGamepad /> 一人プレイ
+          </button>
+          <button
+            className="w-full py-4 bg-green-600 hover:bg-green-700 text-white text-xl font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
+            onClick={() => navigate('/two-player-select')}
+          >
+            <FaGamepad /> 二人プレイ
+          </button>
+          <button
+            className="w-full py-4 bg-yellow-500 hover:bg-yellow-600 text-white text-xl font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
+            onClick={() => navigate('/chart-editor')}
+          >
+            <FaPlus /> 譜面作成
+          </button>
         </div>
       ) : (
-        <button onClick={() => setShowLogin(true)} style={{ background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4, padding: '8px 24px', fontSize: 16, cursor: 'pointer', margin: 24 }}>ログイン</button>
+        <div className="flex flex-col items-center mt-8">
+          <button
+            className="flex items-center gap-2 px-6 py-3 bg-white/20 hover:bg-white/30 text-white text-lg rounded-xl shadow-lg"
+            onClick={() => setShowLogin(true)}
+          >
+            <FaSignInAlt /> ログイン/新規登録
+          </button>
+        </div>
       )}
+      <div className="mt-10 flex flex-col items-center">
+        {user ? (
+          <div className="flex flex-col items-center bg-white/10 rounded-xl p-6 mt-4 shadow-lg">
+            <FaUserCircle className="text-4xl text-blue-300 mb-2" />
+            <span className="text-white text-lg font-semibold mb-2">{user.email}</span>
+            <button
+              className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow transition"
+              onClick={handleLogout}
+            >
+              <FaSignOutAlt /> ログアウト
+            </button>
+          </div>
+        ) : null}
+      </div>
       {showLogin && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-          background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
-        }}>
-          <div style={{ background: '#fff', padding: 32, borderRadius: 10, minWidth: 340, boxShadow: '0 2px 16px rgba(0,0,0,0.15)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
-              <span style={{ fontSize: 32, marginRight: 8 }}>🔒</span>
-              <span style={{ fontSize: 28, fontWeight: 'bold' }}>{isRegister ? '新規登録' : 'ログイン'}</span>
-            </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', color: '#555', marginBottom: 4 }}>メールアドレス</label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                style={{ width: '100%', padding: 8, marginBottom: 12, border: '1px solid #ccc', borderRadius: 4 }}
-              />
-              <label style={{ display: 'block', color: '#555', marginBottom: 4 }}>パスワード</label>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                style={{ width: '100%', padding: 8, marginBottom: 16, border: '1px solid #ccc', borderRadius: 4 }}
-              />
-              <button
-                onClick={handleEmailLogin}
-                style={{ width: '100%', background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4, padding: '10px 0', fontSize: 16, marginBottom: 8, cursor: 'pointer' }}
-              >{isRegister ? '新規登録' : 'ログイン'}</button>
-              <button
-                onClick={() => setIsRegister(!isRegister)}
-                style={{ width: '100%', background: '#eee', color: '#1976d2', border: 'none', borderRadius: 4, padding: '8px 0', fontSize: 14, marginBottom: 8, cursor: 'pointer' }}
-              >{isRegister ? 'ログイン画面へ' : '新規登録はこちら'}</button>
-            </div>
+        <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 w-80 flex flex-col items-center relative">
+            <button className="absolute top-2 right-4 text-gray-400 hover:text-gray-700 text-2xl" onClick={() => setShowLogin(false)}>&times;</button>
+            <h2 className="text-2xl font-bold mb-4 text-gray-800">{isRegister ? '新規登録' : 'ログイン'}</h2>
+            <input
+              className="w-full mb-3 px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+              type="email"
+              placeholder="メールアドレス"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+            />
+            <input
+              className="w-full mb-3 px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+              type="password"
+              placeholder="パスワード"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+            />
+            {error && <div className="text-red-500 text-sm mb-2">{error}</div>}
             <button
+              className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded mb-2 font-bold"
+              onClick={handleEmailLogin}
+            >
+              {isRegister ? '新規登録' : 'ログイン'}
+            </button>
+            <button
+              className="w-full py-2 bg-gray-800 hover:bg-gray-900 text-white rounded mb-2 flex items-center justify-center gap-2"
               onClick={handleGithubLogin}
-              style={{ width: '100%', background: '#24292f', color: '#fff', border: 'none', borderRadius: 4, padding: '10px 0', fontSize: 16, marginBottom: 8, cursor: 'pointer' }}
-            >GitHubで{isRegister ? '新規登録/ログイン' : 'ログイン'}</button>
+            >
+              <FaGithub className="text-xl" /> GitHubでログイン
+            </button>
             <button
-              onClick={() => { setShowLogin(false); setError(''); setIsRegister(false); }}
-              style={{ width: '100%', background: '#eee', color: '#333', border: 'none', borderRadius: 4, padding: '8px 0', fontSize: 14, marginBottom: 0, cursor: 'pointer' }}
-            >キャンセル</button>
-            {error && <div style={{ color: 'red', marginTop: 12, whiteSpace: 'pre-wrap', fontSize: 14 }}>{error}</div>}
+              className="text-blue-500 hover:underline mt-2"
+              onClick={() => setIsRegister(!isRegister)}
+            >
+              {isRegister ? 'ログイン画面へ' : '新規登録はこちら'}
+            </button>
           </div>
         </div>
       )}

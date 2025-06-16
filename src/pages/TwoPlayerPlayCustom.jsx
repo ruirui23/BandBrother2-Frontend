@@ -32,11 +32,13 @@ export default function TwoPlayerPlayCustom() {
         const snap2 = await getDoc(doc(db, 'charts', c2));
         if (snap1.exists()) chart1Data = snap1.data();
         if (snap2.exists()) chart2Data = snap2.data();
-      } catch (e) {}
+      } catch (e) {
+        console.error('譜面データの取得に失敗しました', e);
+      }
       setChart1(chart1Data);
       setChart2(chart2Data);
-      setNotes1(chart1Data ? chart1Data.notes.map(n => ({ ...n, hit: false })) : []);
-      setNotes2(chart2Data ? chart2Data.notes.map(n => ({ ...n, hit: false })) : []);
+      setNotes1((chart1Data?.notes || []).map(n => ({ ...n, hit: false, missed: false })));
+      setNotes2((chart2Data?.notes || []).map(n => ({ ...n, hit: false, missed: false })));
       const audioUrl = (chart1Data && chart1Data.audio && chart1Data.audio.trim() !== '') ? chart1Data.audio : '/audio/Henceforth.mp3';
       setSound(new Howl({ src: [audioUrl], html5: true }));
     };
@@ -101,7 +103,7 @@ export default function TwoPlayerPlayCustom() {
   useEffect(() => {
     if (!started) return;
     setNotes1(arr => arr.map(n => {
-      if (!n.hit && !n.missed && time - n.time > 0.2) {
+      if (!n.hit && time - n.time > 0.2 && !n.missed) {
         setCounts1(c => ({ ...c, miss: c.miss + 1 }));
         setScore1(s => s - 2);
         return { ...n, missed: true };
@@ -109,7 +111,7 @@ export default function TwoPlayerPlayCustom() {
       return n;
     }));
     setNotes2(arr => arr.map(n => {
-      if (!n.hit && !n.missed && time - n.time > 0.2) {
+      if (!n.hit && time - n.time > 0.2 && !n.missed) {
         setCounts2(c => ({ ...c, miss: c.miss + 1 }));
         setScore2(s => s - 2);
         return { ...n, missed: true };
@@ -170,29 +172,33 @@ export default function TwoPlayerPlayCustom() {
 
   if (!chart1 || !chart2) return <div className="text-white">譜面データの取得に失敗しました</div>;
 
+  // 1Pノーツ（中央）
   const visible1 = notes1.filter(
-    n => !n.hit && n.time - time < WINDOW_SEC && (HIT_X + NOTE_SPEED * (n.time - time)) > -100 && (HIT_X + NOTE_SPEED * (n.time - time)) < window.innerWidth + 100
+    n => !n.hit && n.time - time < WINDOW_SEC && (HIT_X + (n.time - time) * NOTE_SPEED) > -100 && (HIT_X + (n.time - time) * NOTE_SPEED) < window.innerWidth + 100
   );
+  // 2Pノーツ（下段）
   const visible2 = notes2.filter(
-    n => !n.hit && n.time - time < WINDOW_SEC && (HIT_X + NOTE_SPEED * (n.time - time)) > -100 && (HIT_X + NOTE_SPEED * (n.time - time)) < window.innerWidth + 100
+    n => !n.hit && n.time - time < WINDOW_SEC && (HIT_X + (n.time - time) * NOTE_SPEED) > -100 && (HIT_X + (n.time - time) * NOTE_SPEED) < window.innerWidth + 100
   );
 
   return (
-    <div className="relative h-screen overflow-hidden bg-black">
-      {/* 1Pノーツ（上段） */}
+    <div className="relative h-screen overflow-hidden bg-black flex flex-col items-center justify-center">
+      <button
+        className="absolute left-4 top-4 px-4 py-2 bg-gray-600 text-white rounded z-30"
+        onClick={() => nav(-1)}
+      >戻る</button>
+      <div className="absolute left-4 top-16 text-white">1P: {score1}</div>
+      <div className="absolute left-4 bottom-4 text-white">2P: {score2}</div>
+      {/* ノーツ表示 */}
       {visible1.map((n) => (
-        <Note key={n.time} x={HIT_X + NOTE_SPEED * (n.time - time)} />
+        <Note key={n.time} x={HIT_X + (n.time - time) * NOTE_SPEED} yOffset={0} />
       ))}
-      {/* 2Pノーツ（下段、y座標をずらす） */}
       {visible2.map((n) => (
-        <Note key={n.time} x={HIT_X + NOTE_SPEED * (n.time - time)} yOffset={80} />
+        <Note key={n.time} x={HIT_X + (n.time - time) * NOTE_SPEED} yOffset={80} />
       ))}
       {/* 判定枠 */}
       <HitLine />
       <HitLine yOffset={80} />
-      {/* スコア表示 */}
-      <div className="absolute left-4 top-4 text-white">1P: {score1}</div>
-      <div className="absolute left-4 bottom-4 text-white">2P: {score2}</div>
     </div>
   );
 }
