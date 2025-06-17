@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Home from './pages/Home.jsx';
 import SelectDifficulty from './pages/SelectDifficulty.jsx';
+import SelectDifficultyMulti from './pages/SelectDifficultyMulti.jsx';
 import Play from './pages/Play.jsx';
 import Result from "./pages/Result.jsx";
 import TwoPlayerSelect from './pages/TwoPlayerSelect.jsx';
@@ -9,6 +10,7 @@ import TwoPlayerPlayCustom from './pages/TwoPlayerPlayCustom.jsx';
 import ChartEditor from './pages/ChartEditor.jsx';
 import PlayCustom from './pages/PlayCustom.jsx';
 import MatchRoom from './pages/MatchRoom.jsx';
+import MultiPlay from './pages/MultiPlay.jsx';
 import { auth } from './firebase';
 import { useEffect, useState } from 'react';
 
@@ -35,9 +37,11 @@ export default function App() {
         <Route path="/select/:musicId" element={
           <RequireAuth><SelectDifficulty /></RequireAuth>
         } />
+        <Route path="/select-difficulty/:roomId" element={<SelectDifficultyMulti />} />
         <Route path="/play/:musicId/:difficulty" element={
           <RequireAuth><Play /></RequireAuth>
         } />
+        <Route path="/multi-play/:roomId/:difficulty" element={<MultiPlay />} />
         <Route path="/result" element={<Result />} />
         <Route path="/match" element={<RequireAuth><MatchRoom/></RequireAuth>} />
         <Route path="/two-player-select" element={<RequireAuth><TwoPlayerSelect /></RequireAuth>} />

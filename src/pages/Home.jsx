@@ -20,6 +20,20 @@ const Home = () => {
     return () => unsubscribe();
   }, []);
 
+  // Firebase新規登録後にバックエンドへユーザー作成リクエストを送る関数
+  const sendUserToBackend = async (user) => {
+    await fetch(`${import.meta.env.VITE_RAILS_URL}/api/user/${user.uid}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: user.email,
+        // 必要に応じて他のユーザーデータも追加
+      }),
+    });
+  };
+
   // エラーコードを日本語に変換する関数
   const getErrorMessage = (error) => {
     if (!error) return '';
@@ -45,8 +59,11 @@ const Home = () => {
   const handleEmailLogin = async () => {
     setError('');
     try {
+      let createdUser = null;
       if (isRegister) {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        createdUser = userCredential.user;
+        await sendUserToBackend(createdUser);
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
@@ -64,6 +81,7 @@ const Home = () => {
     const provider = new GithubAuthProvider();
     try {
       await signInWithPopup(auth, provider);
+      await sendUserToBackend(auth.currentUser);
       setShowLogin(false);
     } catch (error) {
       if (error.code === 'auth/account-exists-with-different-credential') {
@@ -103,6 +121,12 @@ const Home = () => {
             onClick={() => navigate('/chart-editor')}
           >
             <FaPlus /> 譜面作成
+          </button>
+          <button
+            className="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white text-xl font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
+            onClick={() => navigate('/match')}
+          >
+            <FaGamepad /> マッチング
           </button>
         </div>
       ) : (
