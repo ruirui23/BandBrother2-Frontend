@@ -36,10 +36,15 @@ const Home = () => {
       if (u) {
         const uid = u.uid;
 
+        // emailの@の前をユーザー名として使う
+        const userName =
+          u.displayName ||
+          (u.email ? u.email.split("@")[0] : "unknown");
+
         fetch("http://localhost:3000/api/users", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ uid }),
+          body: JSON.stringify({ uid, user_name: userName }),
         })
           .then(() => {
             console.log("UID送信完了");
