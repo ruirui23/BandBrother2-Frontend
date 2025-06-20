@@ -11,6 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # 環境変数ファイルを作成
+      - name: Create .env file
+        run: |
+          echo "VITE_RAILS_URL=${{ secrets.VITE_RAILS_URL }}" >> .env
+          echo "VITE_GO_URL=${{ secrets.VITE_GO_URL }}" >> .env
+          echo "VITE_WS_URL=${{ secrets.VITE_WS_URL }}" >> .env
+
       - run: npm ci && npm run build
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
