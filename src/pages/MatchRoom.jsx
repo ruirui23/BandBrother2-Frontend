@@ -8,6 +8,7 @@ const MatchRoom = () => {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
   const playerIdRef = useRef(null);
+  const intervalIdRef = useRef(null);
 
   // Firebase認証状態の監視
   useEffect(() => {
@@ -23,6 +24,16 @@ const MatchRoom = () => {
     
     return () => unsubscribe();
   }, [navigate]);
+
+  // コンポーネントのアンマウント時にポーリングをクリーンアップ
+  useEffect(() => {
+    return () => {
+      if (intervalIdRef.current) {
+        clearInterval(intervalIdRef.current);
+        intervalIdRef.current = null;
+      }
+    };
+  }, []);
 
   const handleOnClick = () => {
     // ユーザーが認証されていない場合は処理を停止
@@ -60,6 +71,7 @@ const MatchRoom = () => {
             .then((data) => {
               if (data.matched && data.roomId) {
                 clearInterval(intervalId);
+                intervalIdRef.current = null;
                 setIsMatching(false);
                 navigate(`/select-difficulty/${data.roomId}`);
               }
@@ -68,6 +80,7 @@ const MatchRoom = () => {
               console.error(err);
             });
         }, 1000); // 1秒ごとにポーリング
+        intervalIdRef.current = intervalId;
       })
       .catch((err) => {
         setIsMatching(false);
@@ -76,13 +89,60 @@ const MatchRoom = () => {
       });
   };
 
+  const handleOnCancel = () => {
+    if (!user || !playerIdRef.current) {
+      alert('認証が必要です。ログインしてください。');
+      navigate('/');
+      return;
+    }
+    
+    // ポーリングを停止
+    if (intervalIdRef.current) {
+      clearInterval(intervalIdRef.current);
+      intervalIdRef.current = null;
+    }
+    
+    const playerId = playerIdRef.current;
+    
+    fetch(`${import.meta.env.VITE_RAILS_URL}/api/cancel_match`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ player_id: playerId }),
+      credentials: "include",
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          setIsMatching(false);
+          alert("マッチングをキャンセルしました");
+        } else {
+          alert(data.error || "キャンセルに失敗しました");
+        }
+      })
+      .catch((err) => {
+        console.error("キャンセル処理中にエラーが発生しました:", err);
+        alert("キャンセル処理中にエラーが発生しました");
+        setIsMatching(false); // エラー時もマッチング状態を解除
+      });
+  };
+
   return (
     <div>
       <h1 className="text-4xl font-bold text-center mt-10">マッチングルーム</h1>
       {isMatching && (
-        <div className="text-center mt-10">
-          <p>マッチング中...</p>
-        </div>
+        <>
+          <div className="text-center mt-10">
+            <p>マッチング中...</p>
+          </div>
+          <button
+            onClick={() => handleOnCancel()}
+            className="px-6 py-3 bg-red-600 text-white rounded-lg text-lg font-bold hover:bg-red-700 transition-colors"
+          >
+            マッチングキャンセル
+          </button>
+        </>
       )}
       {!isMatching && user && (
         <>
