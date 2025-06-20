@@ -20,8 +20,6 @@ import {
   FaGithub,
 } from "react-icons/fa";
 
-const navigate = useNavigate();
-
 const Home = () => {
   const [showLogin, setShowLogin] = useState(false);
   const [email, setEmail] = useState("");
@@ -98,6 +96,7 @@ const Home = () => {
     const provider = new GithubAuthProvider();
     try {
       await signInWithPopup(auth, provider);
+
       setShowLogin(false);
     } catch (error) {
       if (error.code === "auth/account-exists-with-different-credential") {
@@ -139,6 +138,12 @@ const Home = () => {
             onClick={() => navigate("/chart-editor")}
           >
             <FaPlus /> 譜面作成
+          </button>
+          <button
+            className="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white text-xl font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
+            onClick={() => navigate('/match')}
+          >
+            <FaGamepad /> マッチング
           </button>
         </div>
       ) : (
