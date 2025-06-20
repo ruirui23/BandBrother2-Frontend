@@ -41,7 +41,7 @@ const Home = () => {
           u.displayName ||
           (u.email ? u.email.split("@")[0] : "unknown");
 
-        fetch("http://localhost:3000/api/users", {
+        fetch(`${import.meta.env.VITE_RAILS_URL}/api/users`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ uid, user_name: userName }),
