@@ -15,7 +15,15 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
   
   const [notes, setNotes] = useState(rawNotes.map(n => ({ ...n, hit: false })));
   const [started, setStarted] = useState(false);
-  const [sound] = useState(() => new Howl({ src: [songData.audio], html5: true }));
+  const [sound] = useState(() => new Howl({ 
+    src: [songData.audio], 
+    html5: true,
+    onend: () => {
+      if (onGameEnd) {
+        onGameEnd({ counts, score, time: sound.seek() || 0 });
+      }
+    }
+  }));
   const [time, setTime] = useState(0);
   const [gameState, setGameState] = useState('waiting');
   
@@ -43,17 +51,6 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
       sound.play();
     }
   }, [started, sound]);
-
-  // 15秒でゲーム終了
-  useEffect(() => {
-    if (started && time >= 15 && gameState === 'playing') {
-      setGameState('finished');
-      sound.stop();
-      if (onGameEnd) {
-        onGameEnd({ counts, score, time });
-      }
-    }
-  }, [time, started, gameState, counts, score, onGameEnd]);
 
   // キー入力判定
   const handleKeyPress = useCallback((e) => {
