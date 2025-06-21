@@ -78,13 +78,13 @@ export default function TwoPlayerSelect() {
                         </div>
                     </div>
                     <div>
-                        <div className="mb-2 text-white text-center">2P 譜面</div>
-                         <div className="max-h-60 overflow-y-auto p-2 bg-black/20 rounded-lg">
+                        <div className="mb-2 text-gray-500 text-center">2P 譜面 (1Pと同じ)</div>
+                         <div className="max-h-60 overflow-y-auto p-2 bg-black/20 rounded-lg opacity-50">
                         {customCharts.map(chart => (
                         <button
                             key={chart.id}
-                            className={`block w-full text-left px-4 py-2 m-1 rounded ${c2 === chart.id ? 'bg-red-500 text-white' : 'bg-gray-200 text-black hover:bg-gray-300'}`}
-                            onClick={() => setC2(chart.id)}
+                            disabled
+                            className={`block w-full text-left px-4 py-2 m-1 rounded ${c1 === chart.id ? 'bg-blue-500 text-white' : 'bg-gray-200 text-black'}`}
                         >
                             {chart.title} (BPM:{chart.bpm})
                         </button>
@@ -94,8 +94,8 @@ export default function TwoPlayerSelect() {
                 </div>
                 <button
                 className="mt-6 px-8 py-3 bg-green-600 text-white rounded-xl disabled:bg-gray-500"
-                disabled={!c1 || !c2}
-                onClick={() => nav(`/play2/custom/${c1}/${c2}`)}
+                disabled={!c1}
+                onClick={() => nav(`/play2/custom/${c1}`)}
                 >
                 ゲーム開始
                 </button>
