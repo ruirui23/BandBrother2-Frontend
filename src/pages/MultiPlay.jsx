@@ -116,11 +116,46 @@ export default function MultiPlay() {
     }
   }, [gameStartSignal, rhythmGame]);
 
+  // バックエンドにスコアを送信
+  const sendScoreToBackend = async (finalScore, isWin) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_RAILS_URL}/api/scores`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          uid: user.uid,
+          room_id: parseInt(roomId),
+          score: Math.max(0, finalScore), // 負のスコアを0にする
+          is_win: isWin
+        }),
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('スコア送信成功:', data.message);
+      } else {
+        console.error('スコア送信失敗:', response.status);
+      }
+    } catch (error) {
+      console.error('スコア送信エラー:', error);
+    }
+  };
+
   // ゲーム結果の処理
   useEffect(() => {
     if (gameResultData) {
       rhythmGame.setGameState('finished');
       rhythmGame.sound.stop();
+      
+      // 勝敗判定
+      const isWin = !gameResultData.tie && gameResultData.winner === user.uid;
+      
+      // バックエンドにスコアを送信
+      sendScoreToBackend(rhythmGame.score, isWin);
+      
       navigate('/result', { 
         state: { 
           counts: rhythmGame.counts, 
@@ -133,7 +168,7 @@ export default function MultiPlay() {
       });
       setGameResultData(null);
     }
-  }, [gameResultData, rhythmGame, navigate, user]);
+  }, [gameResultData, rhythmGame, navigate, user, roomId]);
 
   // スコア更新時に相手に送信
   useEffect(() => {
