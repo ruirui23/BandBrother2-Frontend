@@ -48,7 +48,7 @@ export default function App() {
         <Route path="/play2/:musicId/:p1/:p2" element={<RequireAuth><TwoPlayerPlay /></RequireAuth>} />
         <Route path="/chart-editor" element={<RequireAuth><ChartEditor /></RequireAuth>} />
         <Route path="/play/custom/:chartId" element={<RequireAuth><PlayCustom /></RequireAuth>} />
-        <Route path="/play2/custom/:c1/:c2" element={<RequireAuth><TwoPlayerPlayCustom /></RequireAuth>} />
+        <Route path="/play2/custom/:c1" element={<RequireAuth><TwoPlayerPlayCustom /></RequireAuth>} />
       </Routes>
     </BrowserRouter>
   );
