@@ -118,26 +118,36 @@ export default function MultiPlay() {
 
   // バックエンドにスコアを送信
   const sendScoreToBackend = async (finalScore, isWin) => {
+    const scoreData = {
+      uid: user.uid,
+      room_id: parseInt(roomId),
+      score: Math.max(0, finalScore), // 負のスコアを0にする
+      is_win: isWin
+    };
+    
+    console.log('送信データ:', scoreData);
+    
     try {
       const response = await fetch(`${import.meta.env.VITE_RAILS_URL}/api/scores`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          uid: user.uid,
-          room_id: parseInt(roomId),
-          score: Math.max(0, finalScore), // 負のスコアを0にする
-          is_win: isWin
-        }),
+        body: JSON.stringify(scoreData),
         credentials: 'include',
       });
       
       if (response.ok) {
         const data = await response.json();
-        console.log('スコア送信成功:', data.message);
+        console.log('スコア送信成功:', data);
+        if (data.highscore_updated) {
+          console.log('🎉 ハイスコア更新！新記録:', data.current_highscore);
+        } else {
+          console.log('ハイスコア更新なし。現在のハイスコア:', data.current_highscore);
+        }
       } else {
-        console.error('スコア送信失敗:', response.status);
+        const errorData = await response.json();
+        console.error('スコア送信失敗:', response.status, errorData);
       }
     } catch (error) {
       console.error('スコア送信エラー:', error);
