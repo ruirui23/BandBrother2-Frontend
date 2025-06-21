@@ -44,25 +44,18 @@ export default function TwoPlayerPlay() {
 
     soundRef.current = new Howl({
       src: [songData.audio], html5: true,
+      onend: () => {
+        nav('/result', { 
+            state: { 
+                counts1: p1ScoreRef.current, score1: p1ScoreRef.current.score,
+                counts2: p2ScoreRef.current, score2: p2ScoreRef.current.score,
+            }
+        });
+      }
     });
 
     return () => soundRef.current?.unload();
-  }, [p1]);
-
-  useEffect(() => {
-    if (started) {
-      const timer = setTimeout(() => {
-        nav('/result', {
-          state: {
-            counts1: p1ScoreRef.current, score1: p1ScoreRef.current.score,
-            counts2: p2ScoreRef.current, score2: p2ScoreRef.current.score,
-          }
-        });
-      }, 15000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [started, nav]);
+  }, [p1, nav]);
 
   const handleMisses = useCallback(() => {
     const currentTime = soundRef.current?.seek() ?? 0;

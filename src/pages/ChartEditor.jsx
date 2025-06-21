@@ -7,7 +7,6 @@ const GRID_HEIGHT = 180; // px（やや低く）
 const GRID_WIDTH_BASE = 1200; // 横長に拡大
 const LANE_COUNT = 1;
 const NOTE_RADIUS = 18;
-const DURATION = 15; // 秒
 
 const LOCAL_SONGS = [
   { title: "Henceforth", url: "/audio/Henceforth.mp3" },
@@ -79,6 +78,7 @@ const EditorLane = React.memo(({ lane, notes, onNotesChange, duration, gridWidth
 export default function ChartEditor() {
   const [title, setTitle] = useState('');
   const [bpm, setBpm] = useState(120);
+  const [duration, setDuration] = useState(15); // DURATIONをstateで管理
   const [notes, setNotes] = useState([]); // {time, lane, type}
   const [selectedSong, setSelectedSong] = useState(LOCAL_SONGS[0].url);
   const [audioError, setAudioError] = useState(false);
@@ -100,7 +100,7 @@ export default function ChartEditor() {
   };
 
   // BPMに応じてボード長さを調整
-  const beatCount = Math.floor((bpm / 60) * DURATION);
+  const beatCount = Math.floor((bpm / 60) * duration);
   const GRID_WIDTH = Math.max(GRID_WIDTH_BASE, beatCount * 40); // 1拍40pxで伸縮
   const gridStep = GRID_WIDTH / beatCount;
 
@@ -173,6 +173,16 @@ export default function ChartEditor() {
             />
           </div>
           <div className="flex flex-col items-start">
+            <label className="text-white text-base mb-1" htmlFor="duration-input">長さ(秒)</label>
+            <input
+              id="duration-input"
+              className="border p-2 rounded w-24 text-lg bg-gray-300 text-black placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+              type="number"
+              value={duration}
+              onChange={e => setDuration(Number(e.target.value))}
+            />
+          </div>
+          <div className="flex flex-col items-start">
             <label className="text-white text-base mb-1" htmlFor="music-select">BGM</label>
             <select
               id="music-select"
@@ -223,7 +233,7 @@ export default function ChartEditor() {
               lane={index}
               notes={notes}
               onNotesChange={setNotes}
-              duration={DURATION}
+              duration={duration}
               gridWidth={GRID_WIDTH}
               beatCount={beatCount}
               gridStep={gridStep}
