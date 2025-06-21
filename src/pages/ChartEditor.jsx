@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
 
 const GRID_HEIGHT = 180; // px（やや低く）
 const GRID_WIDTH_BASE = 1200; // 横長に拡大
@@ -78,12 +78,45 @@ const EditorLane = React.memo(({ lane, notes, onNotesChange, duration, gridWidth
 export default function ChartEditor() {
   const [title, setTitle] = useState('');
   const [bpm, setBpm] = useState(120);
-  const [duration, setDuration] = useState(15); // DURATIONをstateで管理
-  const [notes, setNotes] = useState([]); // {time, lane, type}
+  const [duration, setDuration] = useState(15);
+  const [notes, setNotes] = useState([]);
   const [selectedSong, setSelectedSong] = useState(LOCAL_SONGS[0].url);
   const [audioError, setAudioError] = useState(false);
   const audioRef = useRef(null);
   const navigate = useNavigate();
+
+  const [editingChartId, setEditingChartId] = useState(null);
+  const [userCharts, setUserCharts] = useState([]);
+  const [isChartListVisible, setIsChartListVisible] = useState(false);
+
+  useEffect(() => {
+    const fetchUserCharts = async () => {
+      if (!auth.currentUser) return;
+      const q = query(collection(db, 'charts'), where('createdBy', '==', auth.currentUser.uid));
+      const querySnapshot = await getDocs(q);
+      setUserCharts(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    };
+    fetchUserCharts();
+  }, []);
+
+  const loadChart = (chart) => {
+    setTitle(chart.title);
+    setBpm(chart.bpm);
+    setDuration(chart.duration || 15);
+    setNotes(chart.notes || []);
+    setSelectedSong(chart.audio);
+    setEditingChartId(chart.id);
+    setIsChartListVisible(false);
+  };
+
+  const handleNewChart = () => {
+    setTitle('');
+    setBpm(120);
+    setDuration(15);
+    setNotes([]);
+    setSelectedSong(LOCAL_SONGS[0].url);
+    setEditingChartId(null);
+  };
 
   // 音声ファイル変更時の処理
   useEffect(() => {
@@ -104,7 +137,6 @@ export default function ChartEditor() {
   const GRID_WIDTH = Math.max(GRID_WIDTH_BASE, beatCount * 40); // 1拍40pxで伸縮
   const gridStep = GRID_WIDTH / beatCount;
 
-  // Firebase保存処理
   const saveChart = async () => {
     if (!title || !selectedSong) {
       alert('タイトルと音源は必須です');
@@ -113,18 +145,26 @@ export default function ChartEditor() {
     if(notes.length === 0){
       if(!confirm('ノーツがありませんが保存しますか？')) return;
     }
+
+    const chartData = {
+      title,
+      audio: selectedSong,
+      bpm: Number(bpm),
+      duration: Number(duration),
+      offset: 0,
+      notes: notes,
+      createdBy: auth.currentUser?.uid || 'unknown',
+    };
+
     try {
-      const chartData = {
-        title,
-        audio: selectedSong,
-        bpm: Number(bpm),
-        offset: 0,
-        notes: notes, // Already sorted
-        createdBy: auth.currentUser?.uid || 'unknown',
-        createdAt: serverTimestamp(),
-      };
-      await addDoc(collection(db, 'charts'), chartData);
-      alert(`譜面「${title}」を保存しました！`);
+      if (editingChartId) {
+        const chartRef = doc(db, 'charts', editingChartId);
+        await updateDoc(chartRef, { ...chartData, updatedAt: serverTimestamp() });
+        alert(`譜面「${title}」を更新しました！`);
+      } else {
+        await addDoc(collection(db, 'charts'), { ...chartData, createdAt: serverTimestamp() });
+        alert(`譜面「${title}」を保存しました！`);
+      }
       navigate('/');
     } catch (e) {
       console.error('保存に失敗しました: ', e);
@@ -149,9 +189,29 @@ export default function ChartEditor() {
         onClick={() => navigate(-1)}
       >戻る</button>
       <h2 className="text-3xl font-bold mb-6 text-white drop-shadow">譜面作成</h2>
+      
+      {isChartListVisible ? (
+        <div className="bg-white/10 rounded-2xl shadow-2xl p-8 w-full max-w-4xl">
+          <h3 className="text-xl text-white mb-4">編集する譜面を選択</h3>
+          <div className="max-h-96 overflow-y-auto">
+            {userCharts.map(chart => (
+              <button key={chart.id} onClick={() => loadChart(chart)} className="block w-full text-left p-3 bg-gray-200 hover:bg-gray-300 rounded mb-2 text-black">
+                {chart.title}
+              </button>
+            ))}
+          </div>
+          <button onClick={() => setIsChartListVisible(false)} className="mt-4 px-4 py-2 bg-gray-600 text-white rounded">
+            キャンセル
+          </button>
+        </div>
+      ) : (
       <div className="bg-white/10 rounded-2xl shadow-2xl p-8 w-full max-w-4xl flex flex-col items-center gap-6">
         {/* 上部コントロールを横並びで中央配置 */}
-        <div className="flex flex-row items-end gap-6 w-full justify-center mb-4">
+        <div className="flex flex-wrap items-end gap-6 w-full justify-center mb-4">
+          <div className='flex gap-4'>
+            <button onClick={handleNewChart} className="px-4 py-2 bg-blue-500 text-white rounded self-end">新規作成</button>
+            <button onClick={() => setIsChartListVisible(true)} className="px-4 py-2 bg-purple-500 text-white rounded self-end">譜面を読み込む</button>
+          </div>
           <div className="flex flex-col items-start">
             <label className="text-white text-base mb-1" htmlFor="title-input">譜面タイトル</label>
             <input
@@ -222,7 +282,7 @@ export default function ChartEditor() {
               className="py-2 px-8 bg-yellow-400 hover:bg-yellow-500 text-blue-700 font-bold rounded-r-xl shadow-lg transition text-lg"
               onClick={saveChart}
             >
-              保存する
+              {editingChartId ? '更新する' : '保存する'}
             </button>
           </div>
         </div>
@@ -243,6 +303,7 @@ export default function ChartEditor() {
           <span className="text-xs text-gray-300 mt-2">各レーンをクリックしてノーツを追加/削除</span>
         </div>
       </div>
+      )}
     </div>
   );
 }
