@@ -90,7 +90,6 @@ export default function Result() {
           </div>
         </div>
         <Link
-          onClick={handleSendResult}
           to="/"
           className="px-6 py-3 bg-blue-500 rounded-lg text-white hover:bg-blue-600"
         >
@@ -112,7 +111,6 @@ export default function Result() {
         <div className="text-2xl font-bold">Score: {score}</div>
       </div>
       <Link
-        onClick={handleSendResult}
         to="/"
         className="px-6 py-3 bg-blue-500 rounded-lg text-white hover:bg-blue-600"
       >

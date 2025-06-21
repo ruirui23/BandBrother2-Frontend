@@ -33,6 +33,7 @@ const Home = () => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
 
+      /*
       if (u) {
         const uid = u.uid;
 
@@ -41,7 +42,7 @@ const Home = () => {
           u.displayName ||
           (u.email ? u.email.split("@")[0] : "unknown");
 
-        fetch("http://localhost:3000/api/users", {
+        fetch(`${import.meta.env.VITE_RAILS_URL}/api/users`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ uid, user_name: userName }),
@@ -53,6 +54,7 @@ const Home = () => {
             console.error("UID送信エラー:", err);
           });
       }
+      */
     });
     return () => unsubscribe();
   }, []);
