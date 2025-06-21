@@ -92,10 +92,6 @@ export default function ChartEditor() {
   const [userCharts, setUserCharts] = useState([]);
   const [isChartListVisible, setIsChartListVisible] = useState(false);
 
-  const [editingChartId, setEditingChartId] = useState(null);
-  const [userCharts, setUserCharts] = useState([]);
-  const [isChartListVisible, setIsChartListVisible] = useState(false);
-
   useEffect(() => {
     const fetchUserCharts = async () => {
       if (!auth.currentUser) return;
