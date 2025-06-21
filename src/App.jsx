@@ -11,6 +11,7 @@ import ChartEditor from './pages/ChartEditor.jsx';
 import PlayCustom from './pages/PlayCustom.jsx';
 import MatchRoom from './pages/MatchRoom.jsx';
 import MultiPlay from './pages/MultiPlay.jsx';
+import Selectchart from './pages/Selectchart.jsx';
 import { auth } from './firebase';
 import { useEffect, useState } from 'react';
 
@@ -30,7 +31,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<Selectchart />} />
         <Route path="/select" element={
           <RequireAuth><SelectDifficulty /></RequireAuth>
         } />
