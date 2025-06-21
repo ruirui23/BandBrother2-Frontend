@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { auth, db } from '../firebase';
+import { auth, db, storage } from '../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 const GRID_HEIGHT = 180; // px（やや低く）
 const GRID_WIDTH_BASE = 1200; // 横長に拡大
@@ -82,6 +83,10 @@ export default function ChartEditor() {
   const [notes, setNotes] = useState([]); // {time, lane, type}
   const [selectedSong, setSelectedSong] = useState(LOCAL_SONGS[0].url);
   const [audioError, setAudioError] = useState(false);
+  const [customAudioFile, setCustomAudioFile] = useState(null);
+  const [uploadedAudioUrl, setUploadedAudioUrl] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const audioRef = useRef(null);
   const navigate = useNavigate();
 
@@ -91,7 +96,88 @@ export default function ChartEditor() {
       audioRef.current.load(); // 新しい音声ファイルを読み込み
       setAudioError(false);
     }
-  }, [selectedSong]);
+  }, [selectedSong, uploadedAudioUrl]);
+
+  // カスタム音声ファイルのアップロード処理
+  const handleAudioUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('audio/')) {
+      alert('音声ファイルを選択してください');
+      return;
+    }
+    
+    // ファイルサイズチェック (50MB制限)
+    const maxSize = 50 * 1024 * 1024; // 50MB
+    if (file.size > maxSize) {
+      alert('ファイルサイズが大きすぎます。50MB以下のファイルを選択してください。');
+      return;
+    }
+    
+    // 認証状態チェック
+    if (!auth.currentUser) {
+      alert('Firebase Storageにアップロードするには認証が必要です。ログインしてください。');
+      return;
+    }
+    
+    setIsUploading(true);
+    setUploadProgress(0);
+    setCustomAudioFile(file);
+    
+    try {
+      // Firebase Storageに直接アップロード（シンプル版）
+      const fileName = `${Date.now()}_${file.name}`;
+      const storageRef = ref(storage, `music/${fileName}`);
+      
+      console.log('アップロード開始:', fileName);
+      console.log('認証状態:', auth.currentUser ? 'ログイン済み' : '未ログイン');
+      console.log('ストレージ参照:', storageRef);
+      
+      // まずシンプルなuploadBytesを試す
+      setUploadProgress(50); // 中間表示
+      const snapshot = await uploadBytes(storageRef, file);
+      console.log('アップロード完了:', snapshot);
+      
+      setUploadProgress(75); // 進行状況更新
+      
+      // ダウンロードURL取得
+      const downloadURL = await getDownloadURL(storageRef);
+      console.log('ダウンロードURL取得成功:', downloadURL);
+      
+      setUploadedAudioUrl(downloadURL);
+      setSelectedSong(downloadURL);
+      setIsUploading(false);
+      setUploadProgress(0);
+      
+      alert('音声ファイルのアップロードが完了しました！');
+      
+    } catch (error) {
+      console.error('アップロードエラー:', error);
+      console.error('エラーコード:', error.code);
+      console.error('エラーメッセージ:', error.message);
+      
+      setIsUploading(false);
+      setUploadProgress(0);
+      
+      switch (error.code) {
+        case 'storage/unauthorized':
+          alert('Firebase Storageへのアクセス権限がありません。\nFirebase ConsoleでStorage Rulesを確認してください。');
+          break;
+        case 'storage/canceled':
+          alert('アップロードがキャンセルされました。');
+          break;
+        case 'storage/unknown':
+          alert('不明なエラーが発生しました。Firebase Storageの設定を確認してください。');
+          break;
+        case 'storage/retry-limit-exceeded':
+          alert('アップロードのリトライ回数上限に達しました。\nネットワーク接続を確認してください。');
+          break;
+        default:
+          alert(`アップロードに失敗しました\nエラーコード: ${error.code}\nメッセージ: ${error.message}`);
+      }
+    }
+  };
 
   // 音声エラーハンドリング
   const handleAudioError = () => {
@@ -110,21 +196,38 @@ export default function ChartEditor() {
       alert('タイトルと音源は必須です');
       return;
     }
+    
+    // 音源URLの妥当性チェック
+    if (!selectedSong.startsWith('http') && !selectedSong.startsWith('/')) {
+      alert('無効な音源URLです。音源を再選択してください。');
+      return;
+    }
+    
     if(notes.length === 0){
       if(!confirm('ノーツがありませんが保存しますか？')) return;
     }
     try {
+      // 音源の種類を判定
+      const isUploadedAudio = selectedSong === uploadedAudioUrl && uploadedAudioUrl;
+      const isLocalAudio = LOCAL_SONGS.find(song => song.url === selectedSong);
+      
       const chartData = {
         title,
-        audio: selectedSong,
+        audio: selectedSong, // Firebase Storage URL または ローカルファイルURL
+        audioType: isUploadedAudio ? 'uploaded' : 'local', // 音源の種類
+        audioTitle: isUploadedAudio ? 
+          (customAudioFile ? customAudioFile.name : 'アップロードした音源') : 
+          (isLocalAudio ? isLocalAudio.title : '不明な音源'),
         bpm: Number(bpm),
         offset: 0,
         notes: notes, // Already sorted
         createdBy: auth.currentUser?.uid || 'unknown',
         createdAt: serverTimestamp(),
       };
+      
+      console.log('保存する譜面データ:', chartData);
       await addDoc(collection(db, 'charts'), chartData);
-      alert(`譜面「${title}」を保存しました！`);
+      alert(`譜面「${title}」を保存しました！\n音源: ${chartData.audioTitle}`);
       navigate('/');
     } catch (e) {
       console.error('保存に失敗しました: ', e);
@@ -174,19 +277,46 @@ export default function ChartEditor() {
           </div>
           <div className="flex flex-col items-start">
             <label className="text-white text-base mb-1" htmlFor="music-select">BGM</label>
-            <select
-              id="music-select"
-              className="border p-2 rounded w-48 text-lg bg-gray-300 text-black focus:outline-none focus:ring-2 focus:ring-yellow-400"
-              value={selectedSong}
-              onChange={e => setSelectedSong(e.target.value)}
-            >
-              {LOCAL_SONGS.map(song => (
-                <option key={song.url} value={song.url}>{song.title}</option>
-              ))}
-            </select>
+            <div className="flex flex-col gap-2">
+              <select
+                id="music-select"
+                className="border p-2 rounded w-48 text-lg bg-gray-300 text-black focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                value={selectedSong}
+                onChange={e => setSelectedSong(e.target.value)}
+              >
+                {LOCAL_SONGS.map(song => (
+                  <option key={song.url} value={song.url}>{song.title}</option>
+                ))}
+                {uploadedAudioUrl && (
+                  <option value={uploadedAudioUrl}>アップロードした音源</option>
+                )}
+              </select>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    accept="audio/*"
+                    onChange={handleAudioUpload}
+                    className="text-xs text-white file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-blue-500 file:text-white hover:file:bg-blue-600"
+                    disabled={isUploading}
+                  />
+                  {isUploading && (
+                    <span className="text-xs text-yellow-400">アップロード中... {uploadProgress}%</span>
+                  )}
+                </div>
+                {isUploading && (
+                  <div className="w-48 bg-gray-600 rounded-full h-2">
+                    <div 
+                      className="bg-blue-500 h-2 rounded-full transition-all duration-300" 
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
             <audio 
               ref={audioRef} 
-              src={selectedSong} 
+              src={selectedSong || uploadedAudioUrl} 
               loop 
               className="hidden" 
               onError={handleAudioError}
