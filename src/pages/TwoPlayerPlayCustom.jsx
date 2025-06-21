@@ -59,10 +59,12 @@ export default function TwoPlayerPlayCustom() {
           onerror: () => { setLoading(false); setError("Failed to load audio."); },
           onend: () => {
             if (resultTimeoutRef.current) clearTimeout(resultTimeoutRef.current);
-            nav('/result', { state: { 
-                counts1: p1ScoreRef.current, score1: p1ScoreRef.current.score,
-                counts2: p2ScoreRef.current, score2: p2ScoreRef.current.score,
-            }});
+            nav('/result', { 
+                state: { 
+                    counts1: p1ScoreRef.current, score1: p1ScoreRef.current.score,
+                    counts2: p2ScoreRef.current, score2: p2ScoreRef.current.score,
+                }
+            });
           }
         });
       } catch (e) {
@@ -78,21 +80,6 @@ export default function TwoPlayerPlayCustom() {
         if (resultTimeoutRef.current) clearTimeout(resultTimeoutRef.current);
     }
   }, [c1, nav]);
-
-  useEffect(() => {
-    if (started) {
-      resultTimeoutRef.current = setTimeout(() => {
-        soundRef.current?.stop();
-        nav('/result', { state: { 
-            counts1: p1ScoreRef.current, score1: p1ScoreRef.current.score,
-            counts2: p2ScoreRef.current, score2: p2ScoreRef.current.score,
-        }});
-      }, 15000);
-    }
-    return () => {
-        if(resultTimeoutRef.current) clearTimeout(resultTimeoutRef.current);
-    }
-  }, [started, nav]);
 
   const handleMisses = useCallback(() => {
     const currentTime = soundRef.current?.seek() ?? 0;
