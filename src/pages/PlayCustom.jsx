@@ -145,6 +145,10 @@ export default function PlayCustom() {
 
   return (
     <div className="relative h-screen overflow-hidden bg-black">
+      <button
+        className="absolute left-4 top-4 px-4 py-2 bg-gray-600 text-white rounded z-30"
+        onClick={() => nav(-1)}
+      >戻る</button>
       {visible.map((n) => (
         <Note
           key={n.time}
