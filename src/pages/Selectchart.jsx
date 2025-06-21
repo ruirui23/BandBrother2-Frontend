@@ -6,7 +6,7 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 const Selectchart = () => {
   const nav = useNavigate();
   const [customCharts, setCustomCharts] = useState([]);
-  const diffs = ['Easy', 'Normal', 'Hard'];
+  const diffs = ['Henceforth','hogehoge','varvar','ajdfj'];
 
   useEffect(() => {
     const fetchCharts = async () => {
@@ -33,8 +33,7 @@ const Selectchart = () => {
             className="px-5 py-4 bg-blue-500 hover:bg-blue-600 rounded-xl text-white text-lg font-bold shadow-lg flex flex-col items-start gap-1 transition"
             onClick={() => nav(`/play/tutorial/${diff.toLowerCase()}`)}
           >
-            <span className="text-xl">{diff}譜面</span>
-            <span className="text-sm text-blue-100">公式譜面一覧</span>
+            <span className="text-xl">{diff}</span>
           </button>
         ))}
       </div>
