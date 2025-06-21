@@ -1,16 +1,11 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { Howl } from 'howler';
 import song from '../data/tutorial.json';
-import { useScore } from '../store';
-import useGameLoop from '../hooks/useGameLoop';
-import { HIT_X, NOTE_SPEED, WINDOW_SEC } from '../constants';
-import Note from '../components/Note';
-import HitLine from '../components/HitLine';
+import useRhythmGame from '../hooks/useRhythmGame';
+import RhythmGameEngine from '../components/RhythmGameEngine';
 
-const JUDGE = { perfect: 24, good: 48 };
 
 export default function MultiPlay() {
   const { roomId, difficulty = 'Easy' } = useParams();
@@ -23,18 +18,8 @@ export default function MultiPlay() {
   const wsRef = useRef(null);
   const [wsConnected, setWsConnected] = useState(false);
   const [opponentScore, setOpponentScore] = useState(0);
-  const [gameState, setGameState] = useState('waiting'); // waiting, playing, finished
-  
-  // ゲーム関連
-  const { add, reset, counts, score } = useScore();
-  const diffObj = song.difficulty[difficulty] || song.difficulty.Easy;
-  const rawNotes = diffObj.notes ?? [];
-  const offset = song.offset ?? 0;
-  
-  const [notes, setNotes] = useState(rawNotes.map(n => ({ ...n, hit: false })));
-  const [started, setStarted] = useState(false);
-  const [sound] = useState(() => new Howl({ src: [song.audio], html5: true }));
-  const [time, setTime] = useState(0);
+  const [gameStartSignal, setGameStartSignal] = useState(false);
+  const [gameResultData, setGameResultData] = useState(null);
 
   // Firebase認証状態の監視
   useEffect(() => {
@@ -42,7 +27,6 @@ export default function MultiPlay() {
       if (currentUser) {
         setUser(currentUser);
       } else {
-        // 未認証の場合はホームページにリダイレクト
         navigate('/');
       }
     });
@@ -50,9 +34,25 @@ export default function MultiPlay() {
     return () => unsubscribe();
   }, [navigate]);
 
+  // リズムゲーム処理
+  const rhythmGame = useRhythmGame(song, difficulty, (gameData) => {
+    // WebSocketでゲーム終了通知
+    if (wsRef.current && wsConnected && user) {
+      wsRef.current.send(JSON.stringify({
+        type: 'game_end',
+        roomId: roomId,
+        finalScore: gameData.score,
+        playerId: user.uid
+      }));
+    }
+  });
+
+
+
+
   // WebSocket接続
   useEffect(() => {
-    if (!user) return; // ユーザー認証が完了するまで待機
+    if (!user) return;
     
     const wsUrl = `${import.meta.env.VITE_WS_URL || 'ws://localhost:8080'}/ws`;
     wsRef.current = new WebSocket(wsUrl);
@@ -60,12 +60,11 @@ export default function MultiPlay() {
     wsRef.current.onopen = () => {
       console.log('WebSocket接続成功');
       setWsConnected(true);
-      // 参加通知（Firebase UIDを使用）
       wsRef.current.send(JSON.stringify({
         type: 'join',
         roomId: roomId,
         difficulty: difficulty,
-        playerId: user.uid // Firebase UIDを使用
+        playerId: user.uid
       }));
     };
     
@@ -75,13 +74,9 @@ export default function MultiPlay() {
       
       switch (data.type) {
         case 'game_start':
-          setGameState('playing');
-          setStarted(true);
-          sound.seek(0);
-          sound.play();
+          setGameStartSignal(true);
           break;
         case 'score_broadcast':
-          // 他のプレイヤーのスコアを更新
           if (data.scores && user) {
             Object.keys(data.scores).forEach(playerId => {
               if (playerId !== user.uid) {
@@ -91,19 +86,7 @@ export default function MultiPlay() {
           }
           break;
         case 'game_result':
-          setGameState('finished');
-          sound.stop();
-          // リザルト画面に遷移
-          navigate('/result', { 
-            state: { 
-              counts, 
-              score, 
-              opponentScore: data.scores ? Object.values(data.scores).find((_, i) => Object.keys(data.scores)[i] !== user.uid) : 0,
-              isMultiPlayer: true,
-              winner: data.winner,
-              tie: data.tie
-            } 
-          });
+          setGameResultData(data);
           break;
       }
     };
@@ -124,114 +107,114 @@ export default function MultiPlay() {
     };
   }, [roomId, difficulty, user]);
 
-  // ゲーム初期化
+  // ゲーム開始シグナルの処理
   useEffect(() => {
-    reset();
-  }, []);
-
-  // ゲームループ
-  useGameLoop(() => {
-    if (started && gameState === 'playing') {
-      setTime(sound.seek() || 0);
+    if (gameStartSignal) {
+      rhythmGame.setGameState('playing');
+      rhythmGame.startGame();
+      setGameStartSignal(false);
     }
-  });
+  }, [gameStartSignal, rhythmGame]);
 
-  // 15秒でゲーム終了
-  useEffect(() => {
-    if (started && time >= 15 && gameState === 'playing') {
-      setGameState('finished');
-      sound.stop();
-      // WebSocketで終了通知
-      if (wsRef.current && wsConnected && user) {
-        wsRef.current.send(JSON.stringify({
-          type: 'game_end',
-          roomId: roomId,
-          finalScore: score,
-          playerId: user.uid
-        }));
+  // バックエンドにスコアを送信
+  const sendScoreToBackend = async (finalScore, isWin) => {
+    const scoreData = {
+      uid: user.uid,
+      room_id: parseInt(roomId),
+      score: Math.max(0, finalScore), // 負のスコアを0にする
+      is_win: isWin
+    };
+    
+    console.log('送信データ:', scoreData);
+    
+    try {
+      const response = await fetch(`${import.meta.env.VITE_RAILS_URL}/api/scores`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(scoreData),
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('スコア送信成功:', data);
+        if (data.highscore_updated) {
+          console.log('🎉 ハイスコア更新！新記録:', data.current_highscore);
+        } else {
+          console.log('ハイスコア更新なし。現在のハイスコア:', data.current_highscore);
+        }
+      } else {
+        const errorData = await response.json();
+        console.error('スコア送信失敗:', response.status, errorData);
       }
+    } catch (error) {
+      console.error('スコア送信エラー:', error);
     }
-  }, [time, started, gameState]);
+  };
+
+  // ゲーム結果の処理
+  useEffect(() => {
+    if (gameResultData) {
+      rhythmGame.setGameState('finished');
+      rhythmGame.sound.stop();
+      
+      // 勝敗判定
+      const isWin = !gameResultData.tie && gameResultData.winner === user.uid;
+      
+      // バックエンドにスコアを送信
+      sendScoreToBackend(rhythmGame.score, isWin);
+      
+      navigate('/result', { 
+        state: { 
+          counts: rhythmGame.counts, 
+          score: rhythmGame.score, 
+          opponentScore: gameResultData.scores ? Object.values(gameResultData.scores).find((_, i) => Object.keys(gameResultData.scores)[i] !== user.uid) : 0,
+          isMultiPlayer: true,
+          winner: gameResultData.winner,
+          tie: gameResultData.tie
+        } 
+      });
+      setGameResultData(null);
+    }
+  }, [gameResultData, rhythmGame, navigate, user, roomId]);
 
   // スコア更新時に相手に送信
   useEffect(() => {
-    if (wsRef.current && wsConnected && gameState === 'playing' && user) {
+    if (rhythmGame.gameState === 'playing' && wsRef.current && wsConnected && user) {
       wsRef.current.send(JSON.stringify({
         type: 'score_update',
         roomId: roomId,
-        score: score,
+        score: rhythmGame.score,
         playerId: user.uid
       }));
     }
-  }, [score, wsConnected, gameState, user]);
+  }, [rhythmGame.score, rhythmGame.gameState, wsConnected, roomId, user]);
 
-  // キー入力判定
-  const onKey = useCallback((e) => {
-    if (gameState !== 'playing' || !started) return;
-    if (e.code !== 'Space') return;
-    
-    const idx = notes.findIndex(n => {
-      if (n.hit) return false;
-      const x = HIT_X + (n.time - time - offset) * NOTE_SPEED;
-      return Math.abs(x - HIT_X) < JUDGE.good;
-    });
-    
-    if (idx === -1) { 
-      add('miss'); 
-      return; 
-    }
-    
-    const x = HIT_X + (notes[idx].time - time - offset) * NOTE_SPEED;
-    if (Math.abs(x - HIT_X) < JUDGE.perfect) {
-      add('perfect');
-    } else {
-      add('good');
-    }
-    
-    setNotes(notes => notes.map((n, i) => i === idx ? { ...n, hit: true } : n));
-  }, [notes, time, started, gameState]);
-
-  useEffect(() => {
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onKey]);
-
-  // ノーツ通過でmiss
-  useEffect(() => {
-    if (gameState !== 'playing' || !started) return;
-    notes.forEach((n, i) => {
-      if (!n.hit && time - n.time > 0.2 && !n.missed) {
-        n.missed = true;
-        add('miss');
-      }
-    });
-  }, [time, started, notes, add, gameState]);
-
-  // 描画対象ノーツ
-  const visible = notes.filter(
-    n => !n.hit && n.time - time < WINDOW_SEC && 
-         (HIT_X + (n.time - time - offset) * NOTE_SPEED) > -100 && 
-         (HIT_X + (n.time - time - offset) * NOTE_SPEED) < window.innerWidth + 100
-  );
 
   return (
-    <div className="relative h-screen overflow-hidden bg-black">
+    <RhythmGameEngine
+      notes={rhythmGame.notes}
+      time={rhythmGame.time}
+      offset={rhythmGame.offset}
+    >
       {/* 接続状態表示 */}
       <div className="absolute top-4 left-4 text-white z-10">
         <div>WebSocket: {wsConnected ? '接続中' : '切断'}</div>
         <div>ルーム: {roomId}</div>
         <div>難易度: {difficulty}</div>
-        <div>状態: {gameState}</div>
+        <div>状態: {rhythmGame.gameState}</div>
       </div>
       
       {/* スコア表示 */}
       <div className="absolute top-4 right-4 text-white z-10">
-        <div>自分: {score}</div>
+        <div>自分: {rhythmGame.score}</div>
         <div>相手: {opponentScore}</div>
       </div>
 
       {/* 待機画面 */}
-      {gameState === 'waiting' && (
+      {rhythmGame.gameState === 'waiting' && (
         <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-75 text-white z-20">
           <div className="text-center">
             <h2 className="text-3xl mb-4">対戦相手を待っています...</h2>
@@ -239,19 +222,6 @@ export default function MultiPlay() {
           </div>
         </div>
       )}
-
-      {/* ゲーム画面 */}
-      {gameState === 'playing' && (
-        <>
-          {visible.map((n) => (
-            <Note
-              key={n.time}
-              x={HIT_X + (n.time - time - offset) * NOTE_SPEED}
-            />
-          ))}
-          <HitLine />
-        </>
-      )}
-    </div>
+    </RhythmGameEngine>
   );
 }
