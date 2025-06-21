@@ -11,6 +11,18 @@ import HitLine from '../components/HitLine';
 
 const JUDGE = { perfect: 24, good: 48 }; // px単位: perfect=24px(0.04s*300), good=48px(0.10s*300)
 
+// レーンのY座標を定義
+const LANE_Y_POSITIONS = [-96, -32, 32, 96]; 
+
+// キーとレーンのマッピング
+const KEY_TO_LANE = {
+  'KeyD': 0,
+  'KeyF': 1,
+  'KeyJ': 2,
+  'KeyK': 3,
+};
+const VALID_KEYS = Object.keys(KEY_TO_LANE);
+
 export default function Play() {
   /* ---------- URL パラメータ ---------- */
   const { difficulty = 'Easy' } = useParams();
@@ -42,40 +54,44 @@ export default function Play() {
     reset();
     notesRef.current = (diffObj.notes ?? [])
       .sort((a, b) => a.time - b.time)
-      .map(n => ({ ...n, hit: false, missed: false }));
+      .map(n => ({ ...n, id: `${n.time}-${n.lane}`, hit: false, missed: false }));
 
     soundRef.current = new Howl({
       src: [song.audio],
       html5: true,
       preload: true,
       onload: () => setIsSoundLoaded(true),
+      onend: () => {
+        setTimeout(() => {
+           nav('/result', { state: scoreRef.current });
+        }, 500);
+      }
     });
 
     return () => {
       soundRef.current?.stop();
       soundRef.current?.unload();
     };
-  }, [difficulty]);
+  }, [difficulty, reset, nav, diffObj.notes]);
 
   useEffect(() => {
     if (started && time >= 15) {
       soundRef.current?.stop();
-      nav('/result', { state: scoreRef.current });
+      if(nav) nav('/result', { state: scoreRef.current });
     }
   }, [time, started, nav]);
 
   useEffect(() => {
     if (!isSoundLoaded || !soundRef.current) return;
-    const handlePlay = () => setStarted(true);
-    const onFirstKey = () => {
+
+    const onFirstKey = (e) => {
       if (!soundRef.current.playing()) {
-        soundRef.current.play();
+         soundRef.current.play();
+         setStarted(true);
       }
     };
-    soundRef.current.on('play', handlePlay);
     window.addEventListener('keydown', onFirstKey, { once: true });
     return () => {
-      soundRef.current?.off('play', handlePlay);
       window.removeEventListener('keydown', onFirstKey);
     };
   }, [isSoundLoaded]);
@@ -99,23 +115,35 @@ export default function Play() {
   });
 
   const onKey = useCallback((e) => {
-    if (!started || e.code !== 'Space') return;
+    if (!started || !VALID_KEYS.includes(e.code)) return;
     
+    const lane = KEY_TO_LANE[e.code];
     const currentTime = soundRef.current?.seek() || 0;
-    const targetNoteIndex = notesRef.current.findIndex(n => {
-      if (n.hit || n.missed) return false;
-      const x = HIT_X + (n.time - currentTime - offset) * NOTE_SPEED;
-      return Math.abs(x - HIT_X) < JUDGE.good;
+
+    // 押されたキーに対応するレーンの中で、最も判定ラインに近いノーツを探す
+    let bestMatchIndex = -1;
+    let minDistance = Infinity;
+
+    notesRef.current.forEach((n, index) => {
+        if (n.lane !== lane || n.hit || n.missed) return;
+        
+        const distance = Math.abs(HIT_X - (HIT_X + (n.time - currentTime - offset) * NOTE_SPEED));
+        
+        if (distance < JUDGE.good && distance < minDistance) {
+            minDistance = distance;
+            bestMatchIndex = index;
+        }
     });
 
-    if (targetNoteIndex === -1) {
-      add('miss');
+
+    if (bestMatchIndex === -1) {
+      // 対応レーンに叩けるノーツがなければミス（お好みで）
+      // add('miss'); 
       return;
     }
 
-    const note = notesRef.current[targetNoteIndex];
-    const x = HIT_X + (note.time - currentTime - offset) * NOTE_SPEED;
-    if (Math.abs(x - HIT_X) < JUDGE.perfect) {
+    const note = notesRef.current[bestMatchIndex];
+    if (minDistance < JUDGE.perfect) {
       add('perfect');
     } else {
       add('good');
@@ -131,31 +159,42 @@ export default function Play() {
   }, [onKey]);
 
   /* ---------- 描画対象ノーツ ---------- */
-  // ノーツを右端から左端へ流す
-  const screenW = window.innerWidth;
-  const visible = notesRef.current.filter(
-    n => !n.hit && !n.missed && n.time - time < WINDOW_SEC && n.time - time > -1.5
+  const visibleNotes = notesRef.current.filter(
+    n => !n.hit && !n.missed && Math.abs(n.time - time - offset) < WINDOW_SEC
   );
+  
+  const screenCenterY = typeof window !== 'undefined' ? window.innerHeight / 2 : 0;
 
   /* ---------- 描画 ---------- */
-  if (!isSoundLoaded) return <div className="flex items-center justify-center h-screen bg-black text-white text-2xl">音源を読み込んでいます...</div>;
-  if (!started) return <div className="flex items-center justify-center h-screen bg-black text-white text-2xl">Press any key to start</div>;
+  if (!isSoundLoaded) return <div className="flex items-center justify-center h-screen bg-black text-white text-2xl">Loading...</div>;
+  if (!started) return <div className="flex items-center justify-center h-screen bg-black text-white text-2xl">Press D, F, J, or K to start</div>;
 
   return (
-    <div className="relative h-screen overflow-hidden bg-black flex flex-col items-center justify-center">
-      <button
+    <div className="relative h-screen overflow-hidden bg-black">
+       <button
         className="absolute left-4 top-4 px-4 py-2 bg-gray-600 text-white rounded z-30"
         onClick={() => nav(-1)}
-      >戻る</button>
-      {/* ノーツ表示 */}
-      {visible.map((n) => (
-        <Note
-          key={n.time}
-          x={HIT_X + (n.time - time - offset) * NOTE_SPEED}
-          yOffset={0}
-        />
+      >Back</button>
+
+      {/* 4本の判定ライン */}
+      {LANE_Y_POSITIONS.map((y, index) => (
+         <div key={index} style={{ top: `calc(50% + ${y}px)`}} className="absolute left-0 right-0 transform -translate-y-1/2">
+            <HitLine lane={index} />
+         </div>
       ))}
-      <HitLine />
+
+      {/* ノーツ表示 */}
+      {visibleNotes.map((n) => {
+        const yPos = screenCenterY + LANE_Y_POSITIONS[n.lane];
+        return (
+          <Note
+            key={n.id}
+            x={HIT_X + (n.time - time - offset) * NOTE_SPEED}
+            y={yPos}
+            lane={n.lane}
+          />
+        )
+      })}
     </div>
   );
 }

@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { auth,db } from '../firebase';
+import { auth, db } from '../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 const GRID_HEIGHT = 180; // px（やや低く）
@@ -17,6 +17,64 @@ const LOCAL_SONGS = [
   { title: "喜志駅周辺なんもない", url: "/audio/喜志駅周辺なんもない.mp3" },
   { title: "無線LANマジ便利", url: "/audio/無線LANマジ便利.mp3" },
 ];
+
+const LANE_COLORS = [
+  { name: 'Orange', bg: 'bg-orange-900/50', border: 'border-orange-400', note: 'bg-orange-300', noteBorder: 'border-orange-500' },
+  { name: 'Pink', bg: 'bg-pink-900/50', border: 'border-pink-400', note: 'bg-pink-300', noteBorder: 'border-pink-500' },
+  { name: 'Cyan', bg: 'bg-cyan-900/50', border: 'border-cyan-400', note: 'bg-cyan-300', noteBorder: 'border-cyan-500' },
+  { name: 'Green', bg: 'bg-green-900/50', border: 'border-green-400', note: 'bg-green-300', noteBorder: 'border-green-500' },
+];
+
+const EditorLane = React.memo(({ lane, notes, onNotesChange, duration, gridWidth, beatCount, gridStep, colorConfig }) => {
+  const getX = (time) => (time / duration) * gridWidth;
+
+  const handleGridClick = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const time = duration * (x / gridWidth);
+
+    const proximityThreshold = duration * (NOTE_RADIUS * 2 / gridWidth);
+    const foundIndex = notes.findIndex(n => n.lane === lane && Math.abs(n.time - time) < proximityThreshold);
+
+    if (foundIndex !== -1) {
+      onNotesChange(notes.filter((_, i) => i !== foundIndex));
+    } else {
+      onNotesChange([...notes, { time, lane, type: 'tap' }].sort((a,b) => a.time - b.time));
+    }
+  };
+
+  return (
+    <div className={`w-full h-24 ${colorConfig.bg} rounded-xl border-2 ${colorConfig.border} shadow-inner flex items-center justify-center relative overflow-x-auto`} style={{ minWidth: 800, maxWidth: 1400 }}>
+      <div
+        className="absolute inset-0 cursor-pointer"
+        style={{ width: gridWidth, height: '100%' }}
+        onClick={handleGridClick}
+      >
+        {Array.from({ length: beatCount + 1 }).map((_, i) => (
+          <div
+            key={i}
+            className="absolute top-0 bottom-0 w-px bg-white/20"
+            style={{ left: i * gridStep }}
+          />
+        ))}
+        {notes.filter(n => n.lane === lane).map((n, i) => (
+          <div
+            key={i}
+            className={`absolute rounded-full ${colorConfig.note} ${colorConfig.noteBorder} border-2 shadow-lg`}
+            style={{
+              left: getX(n.time) - NOTE_RADIUS,
+              top: '50%' ,
+              transform: 'translateY(-50%)',
+              width: NOTE_RADIUS * 2,
+              height: NOTE_RADIUS * 2,
+              zIndex: 20,
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+});
 
 export default function ChartEditor() {
   const [title, setTitle] = useState('');
@@ -46,41 +104,26 @@ export default function ChartEditor() {
   const GRID_WIDTH = Math.max(GRID_WIDTH_BASE, beatCount * 40); // 1拍40pxで伸縮
   const gridStep = GRID_WIDTH / beatCount;
 
-  // ノーツ追加/削除
-  const handleGridClick = (e) => {
-    const rect = e.target.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    // 左→右に時間が進む
-    const t = DURATION * (x / GRID_WIDTH);
-    // 既存ノーツが近くにあれば削除
-    const found = notes.findIndex(n => Math.abs(n.time - t) < 0.2);
-    if (found !== -1) {
-      setNotes(notes.filter((_, i) => i !== found));
-    } else {
-      setNotes([...notes, { time: t, lane: 0, type: 'tap' }]);
-    }
-  };
-
-  // ノーツのX座標計算（左→右）
-  const getX = (time) => (time / DURATION) * GRID_WIDTH;
-
   // Firebase保存処理
   const saveChart = async () => {
-    if (!title || notes.length === 0 || !selectedSong) {
-      alert('タイトル・音源・ノーツは必須です');
+    if (!title || !selectedSong) {
+      alert('タイトルと音源は必須です');
       return;
+    }
+    if(notes.length === 0){
+      if(!confirm('ノーツがありませんが保存しますか？')) return;
     }
     try {
       const chartData = {
         title,
-        audio: selectedSong, // 選択した音源のパスを保存
+        audio: selectedSong,
         bpm: Number(bpm),
         offset: 0,
-        notes: notes.map(({ time, lane, type }) => ({ time, lane, type })),
-        createdBy: auth.currentUser.uid,
+        notes: notes, // Already sorted
+        createdBy: auth.currentUser?.uid || 'unknown',
         createdAt: serverTimestamp(),
       };
-      const docRef = await addDoc(collection(db, 'charts'), chartData);
+      await addDoc(collection(db, 'charts'), chartData);
       alert(`譜面「${title}」を保存しました！`);
       navigate('/');
     } catch (e) {
@@ -92,15 +135,10 @@ export default function ChartEditor() {
   const handlePlayPause = () => {
     if (audioRef.current && !audioError) {
       if (audioRef.current.paused) {
-        audioRef.current.play().catch(err => {
-          console.error('音声再生エラー:', err);
-          setAudioError(true);
-        });
+        audioRef.current.play().catch(() => setAudioError(true));
       } else {
         audioRef.current.pause();
       }
-    } else if (audioError) {
-      alert('音声ファイルの読み込みに失敗しています。ファイルが正しく配置されているか確認してください。');
     }
   };
 
@@ -178,43 +216,21 @@ export default function ChartEditor() {
             </button>
           </div>
         </div>
-        <div className="flex flex-col items-center w-full">
-          <div className="w-full h-56 bg-gradient-to-b from-gray-800 via-black to-gray-900 rounded-xl border-4 border-yellow-400 shadow-inner flex items-center justify-center relative overflow-x-auto" style={{ minWidth: 800, maxWidth: 1400 }}>
-            <div
-              className="absolute inset-0 cursor-pointer"
-              style={{ width: GRID_WIDTH, height: GRID_HEIGHT }}
-              onClick={handleGridClick}
-            >
-              {/* 判定ライン */}
-              <div
-                className="absolute left-8 right-8 top-1/2 h-0.5 bg-yellow-300 opacity-80 z-10"
-                style={{ top: GRID_HEIGHT / 2 }}
-              />
-              {/* ガイド線（1小節ごと） */}
-              {Array.from({ length: beatCount + 1 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="absolute top-0 bottom-0 w-0.5 bg-yellow-100 opacity-30"
-                  style={{ left: i * gridStep }}
-                />
-              ))}
-              {/* ノーツ描画 */}
-              {notes.map((n, i) => (
-                <div
-                  key={i}
-                  className="absolute rounded-full border-4 border-yellow-400 bg-yellow-200 shadow-lg animate-pulse hover:scale-110 transition"
-                  style={{
-                    left: getX(n.time) - NOTE_RADIUS,
-                    top: GRID_HEIGHT / 2 - NOTE_RADIUS,
-                    width: NOTE_RADIUS * 2,
-                    height: NOTE_RADIUS * 2,
-                    zIndex: 20,
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-          <span className="text-xs text-gray-300 mt-2">クリックでノーツ追加/削除</span>
+        <div className="w-full flex flex-col gap-2 items-center">
+          {LANE_COLORS.map((color, index) => (
+            <EditorLane 
+              key={index}
+              lane={index}
+              notes={notes}
+              onNotesChange={setNotes}
+              duration={DURATION}
+              gridWidth={GRID_WIDTH}
+              beatCount={beatCount}
+              gridStep={gridStep}
+              colorConfig={color}
+            />
+          ))}
+          <span className="text-xs text-gray-300 mt-2">各レーンをクリックしてノーツを追加/削除</span>
         </div>
       </div>
     </div>
