@@ -33,6 +33,7 @@ const Home = () => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
 
+      /*
       if (u) {
         const uid = u.uid;
 
@@ -53,6 +54,7 @@ const Home = () => {
             console.error("UID送信エラー:", err);
           });
       }
+      */
     });
     return () => unsubscribe();
   }, []);
