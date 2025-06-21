@@ -1,6 +1,6 @@
 // src/pages/Play.jsx
 import { useParams, useNavigate } from 'react-router-dom';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Howl } from 'howler';
 import song from '../data/tutorial.json';
 import { useScore } from '../store';
@@ -24,87 +24,123 @@ export default function Play() {
   const rawNotes = diffObj.notes ?? [];
   const offset   = song.offset ?? 0;                  // undefined → 0
 
-  /* hit フラグ付きノーツ */
-  const [notes, setNotes] = useState(rawNotes.map(n => ({ ...n, hit: false })));
+  const notesRef = useRef([]);
   const [started, setStarted] = useState(false);
-  const [sound] = useState(() => new Howl({ src: [song.audio], html5: true }));
   const [time, setTime] = useState(0);
+  const [isSoundLoaded, setIsSoundLoaded] = useState(false);
+  
+  const soundRef = useRef(null);
+  const scoreRef = useRef({ counts, score });
 
-  /* ---------- 初回再生 & クリーンアップ ---------- */
+  useEffect(() => {
+    return useScore.subscribe(
+      (state) => (scoreRef.current = { counts: state.counts, score: state.score })
+    );
+  }, []);
+
   useEffect(() => {
     reset();
+    notesRef.current = (diffObj.notes ?? [])
+      .sort((a, b) => a.time - b.time)
+      .map(n => ({ ...n, hit: false, missed: false }));
 
-    const onFirstKey = () => {
-      if (!started) {
-        setStarted(true);
-        sound.seek(0);
-        sound.play();
-      }
+    soundRef.current = new Howl({
+      src: [song.audio],
+      html5: true,
+      preload: true,
+      onload: () => setIsSoundLoaded(true),
+    });
+
+    return () => {
+      soundRef.current?.stop();
+      soundRef.current?.unload();
     };
-    window.addEventListener('keydown', onFirstKey, { once: true });
-    return () => window.removeEventListener('keydown', onFirstKey);
-  }, [sound, started]);
+  }, [difficulty]);
 
-  /* ---------- 毎フレーム時間更新 ---------- */
-  useGameLoop(() => {
-    if (started) setTime(sound.seek() || 0);
-  });
-
-  // 15秒で音楽停止＆リザルト遷移
   useEffect(() => {
     if (started && time >= 15) {
-      sound.stop();
-      nav('/result', { state: { counts, score } });
+      soundRef.current?.stop();
+      nav('/result', { state: scoreRef.current });
     }
-  }, [time, started]);
+  }, [time, started, nav]);
 
-  // キー入力判定
-  const onKey = useCallback(
-    (e) => {
-      if (!started) return;
-      if (e.code !== 'Space') return;
-      const idx = notes.findIndex(
-        n => {
-          if (n.hit) return false;
-          const x = HIT_X + (n.time - time - offset) * NOTE_SPEED;
-          return Math.abs(x - HIT_X) < JUDGE.good;
-        }
-      );
-      if (idx === -1) { add('miss'); return; } // missに変更
-      const x = HIT_X + (notes[idx].time - time - offset) * NOTE_SPEED;
-      if (Math.abs(x - HIT_X) < JUDGE.perfect) {
-        add('perfect'); // 5点
-      } else {
-        add('good');    // 1点
+  useEffect(() => {
+    if (!isSoundLoaded || !soundRef.current) return;
+    const handlePlay = () => setStarted(true);
+    const onFirstKey = () => {
+      if (!soundRef.current.playing()) {
+        soundRef.current.play();
       }
-      setNotes(notes => notes.map((n, i) => i === idx ? { ...n, hit: true } : n));
-    },
-    [notes, time, started]
-  );
+    };
+    soundRef.current.on('play', handlePlay);
+    window.addEventListener('keydown', onFirstKey, { once: true });
+    return () => {
+      soundRef.current?.off('play', handlePlay);
+      window.removeEventListener('keydown', onFirstKey);
+    };
+  }, [isSoundLoaded]);
+
+  useGameLoop(() => {
+    if (!started || !soundRef.current) return;
+    const newTime = soundRef.current.seek();
+    if (typeof newTime !== 'number') return;
+    setTime(newTime);
+    
+    let misses = 0;
+    for (const n of notesRef.current) {
+      if (!n.hit && !n.missed && newTime - (n.time - offset) > 0.2) {
+        n.missed = true;
+        misses++;
+      }
+    }
+    if (misses > 0) {
+      for (let i = 0; i < misses; i++) add('miss');
+    }
+  });
+
+  const onKey = useCallback((e) => {
+    if (!started || e.code !== 'Space') return;
+    
+    const currentTime = soundRef.current?.seek() || 0;
+    const targetNoteIndex = notesRef.current.findIndex(n => {
+      if (n.hit || n.missed) return false;
+      const x = HIT_X + (n.time - currentTime - offset) * NOTE_SPEED;
+      return Math.abs(x - HIT_X) < JUDGE.good;
+    });
+
+    if (targetNoteIndex === -1) {
+      add('miss');
+      return;
+    }
+
+    const note = notesRef.current[targetNoteIndex];
+    const x = HIT_X + (note.time - currentTime - offset) * NOTE_SPEED;
+    if (Math.abs(x - HIT_X) < JUDGE.perfect) {
+      add('perfect');
+    } else {
+      add('good');
+    }
+    note.hit = true;
+    setTime(currentTime); // Force re-render
+
+  }, [started, offset, add]);
+
   useEffect(() => {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onKey]);
 
-  // ノーツ通過でmiss
-  useEffect(() => {
-    if (!started) return;
-    notes.forEach((n, i) => {
-      if (!n.hit && time - n.time > 0.2 && !n.missed) {
-        n.missed = true;
-        add('miss');
-      }
-    });
-  }, [time, started, notes, add]);
-
   /* ---------- 描画対象ノーツ ---------- */
   // ノーツを右端から左端へ流す
   const screenW = window.innerWidth;
-  const visible = notes.filter(
-    n => !n.hit && n.time - time < WINDOW_SEC && n.time - time > -1.5
+  const visible = notesRef.current.filter(
+    n => !n.hit && !n.missed && n.time - time < WINDOW_SEC && n.time - time > -1.5
   );
 
   /* ---------- 描画 ---------- */
+  if (!isSoundLoaded) return <div className="flex items-center justify-center h-screen bg-black text-white text-2xl">音源を読み込んでいます...</div>;
+  if (!started) return <div className="flex items-center justify-center h-screen bg-black text-white text-2xl">Press any key to start</div>;
+
   return (
     <div className="relative h-screen overflow-hidden bg-black flex flex-col items-center justify-center">
       <button

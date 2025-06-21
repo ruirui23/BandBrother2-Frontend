@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth,db } from '../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -9,11 +9,37 @@ const LANE_COUNT = 1;
 const NOTE_RADIUS = 18;
 const DURATION = 15; // 秒
 
+const LOCAL_SONGS = [
+  { title: "Henceforth", url: "/audio/Henceforth.mp3" },
+  { title: "DAYBREAK FRONTLINE", url: "/audio/DAYBREAK FRONTLINE.mp3" },
+  { title: "NOMONEYDANCE", url: "/audio/NOMONEYDANCE.mp3" },
+  { title: "あつまれ！パーティーピーポー", url: "/audio/あつまれ！パーティーピーポー.mp3" },
+  { title: "喜志駅周辺なんもない", url: "/audio/喜志駅周辺なんもない.mp3" },
+  { title: "無線LANマジ便利", url: "/audio/無線LANマジ便利.mp3" },
+];
+
 export default function ChartEditor() {
   const [title, setTitle] = useState('');
   const [bpm, setBpm] = useState(120);
   const [notes, setNotes] = useState([]); // {time, lane, type}
+  const [selectedSong, setSelectedSong] = useState(LOCAL_SONGS[0].url);
+  const [audioError, setAudioError] = useState(false);
+  const audioRef = useRef(null);
   const navigate = useNavigate();
+
+  // 音声ファイル変更時の処理
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.load(); // 新しい音声ファイルを読み込み
+      setAudioError(false);
+    }
+  }, [selectedSong]);
+
+  // 音声エラーハンドリング
+  const handleAudioError = () => {
+    setAudioError(true);
+    console.error('音声ファイルの読み込みに失敗しました:', selectedSong);
+  };
 
   // BPMに応じてボード長さを調整
   const beatCount = Math.floor((bpm / 60) * DURATION);
@@ -40,23 +66,41 @@ export default function ChartEditor() {
 
   // Firebase保存処理
   const saveChart = async () => {
-    if (!title || notes.length === 0) {
-      alert('タイトル・ノーツを入力してください');
+    if (!title || notes.length === 0 || !selectedSong) {
+      alert('タイトル・音源・ノーツは必須です');
       return;
     }
     try {
-      await addDoc(collection(db, 'charts'), {
+      const chartData = {
         title,
+        audio: selectedSong, // 選択した音源のパスを保存
         bpm: Number(bpm),
         offset: 0,
-        notes,
-        createdBy: auth.currentUser.uid,    
+        notes: notes.map(({ time, lane, type }) => ({ time, lane, type })),
+        createdBy: auth.currentUser.uid,
         createdAt: serverTimestamp(),
-      });
-      alert('譜面を保存しました！');
+      };
+      const docRef = await addDoc(collection(db, 'charts'), chartData);
+      alert(`譜面「${title}」を保存しました！`);
       navigate('/');
     } catch (e) {
-      alert('保存に失敗しました: ' + e.message);
+      console.error('保存に失敗しました: ', e);
+      alert('保存に失敗しました。');
+    }
+  };
+
+  const handlePlayPause = () => {
+    if (audioRef.current && !audioError) {
+      if (audioRef.current.paused) {
+        audioRef.current.play().catch(err => {
+          console.error('音声再生エラー:', err);
+          setAudioError(true);
+        });
+      } else {
+        audioRef.current.pause();
+      }
+    } else if (audioError) {
+      alert('音声ファイルの読み込みに失敗しています。ファイルが正しく配置されているか確認してください。');
     }
   };
 
@@ -74,7 +118,7 @@ export default function ChartEditor() {
             <label className="text-white text-base mb-1" htmlFor="title-input">譜面タイトル</label>
             <input
               id="title-input"
-              className="border p-2 rounded w-48 text-lg bg-black/60 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+              className="border p-2 rounded w-48 text-lg bg-gray-300 text-black placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-400"
               placeholder="譜面タイトル"
               value={title}
               onChange={e => setTitle(e.target.value)}
@@ -84,18 +128,55 @@ export default function ChartEditor() {
             <label className="text-white text-base mb-1" htmlFor="bpm-input">BPM</label>
             <input
               id="bpm-input"
-              className="border p-2 rounded w-24 text-lg bg-white/60 placeholder-white-400 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+              className="border p-2 rounded w-24 text-lg bg-gray-300 text-black placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-400"
               type="number"
               value={bpm}
               onChange={e => setBpm(Number(e.target.value))}
             />
           </div>
-          <button
-            className="ml-4 py-2 px-8 bg-yellow-400 hover:bg-yellow-500 text-blue-700 font-bold rounded-xl shadow-lg transition text-lg"
-            onClick={saveChart}
-          >
-            保存する
-          </button>
+          <div className="flex flex-col items-start">
+            <label className="text-white text-base mb-1" htmlFor="music-select">BGM</label>
+            <select
+              id="music-select"
+              className="border p-2 rounded w-48 text-lg bg-gray-300 text-black focus:outline-none focus:ring-2 focus:ring-yellow-400"
+              value={selectedSong}
+              onChange={e => setSelectedSong(e.target.value)}
+            >
+              {LOCAL_SONGS.map(song => (
+                <option key={song.url} value={song.url}>{song.title}</option>
+              ))}
+            </select>
+            <audio 
+              ref={audioRef} 
+              src={selectedSong} 
+              loop 
+              className="hidden" 
+              onError={handleAudioError}
+            />
+            {audioError && (
+              <span className="text-xs text-red-400 mt-1">音声ファイル読み込みエラー</span>
+            )}
+          </div>
+          {/* ボタンをグループ化 */}
+          <div className="flex items-end ml-4">
+            <button
+              onClick={handlePlayPause}
+              className={`py-2 px-6 font-bold rounded-l-xl ${
+                audioError 
+                  ? 'bg-gray-500 text-gray-300 cursor-not-allowed' 
+                  : 'bg-green-500 hover:bg-green-600 text-white'
+              }`}
+              disabled={audioError}
+            >
+              再生/停止
+            </button>
+            <button
+              className="py-2 px-8 bg-yellow-400 hover:bg-yellow-500 text-blue-700 font-bold rounded-r-xl shadow-lg transition text-lg"
+              onClick={saveChart}
+            >
+              保存する
+            </button>
+          </div>
         </div>
         <div className="flex flex-col items-center w-full">
           <div className="w-full h-56 bg-gradient-to-b from-gray-800 via-black to-gray-900 rounded-xl border-4 border-yellow-400 shadow-inner flex items-center justify-center relative overflow-x-auto" style={{ minWidth: 800, maxWidth: 1400 }}>
