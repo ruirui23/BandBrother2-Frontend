@@ -68,7 +68,6 @@ export default function PlayCustom() {
                 setTimeout(() => nav('/result', { state: scoreRef.current }), 500);
             }
         });
-
       } catch (e) {
         setError('譜面データの取得に失敗しました。');
         setLoading(false);
@@ -143,6 +142,13 @@ export default function PlayCustom() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onKey]);
+
+  useEffect(() => {
+    if (started && chartDataRef.current && time >= (chartDataRef.current.duration || 15)) {
+      soundRef.current?.stop();
+      nav('/result', { state: scoreRef.current });
+    }
+  }, [time, started, nav]);
 
   const visibleNotes = notesRef.current.filter(
     n => !n.hit && !n.missed && Math.abs(n.time - time) < WINDOW_SEC

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { auth } from "../firebase";
 import { onAuthStateChanged } from "firebase/auth";
 
@@ -7,8 +7,12 @@ const MatchRoom = () => {
   const [isMatching, setIsMatching] = useState(false);
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const playerIdRef = useRef(null);
   const intervalIdRef = useRef(null);
+  
+  // 楽曲選択データを取得
+  const musicData = location.state || {};
 
   // Firebase認証状態の監視
   useEffect(() => {
@@ -73,7 +77,10 @@ const MatchRoom = () => {
                 clearInterval(intervalId);
                 intervalIdRef.current = null;
                 setIsMatching(false);
-                navigate(`/select-difficulty/${data.roomId}`);
+                // 楽曲データと一緒に難易度選択画面へ
+                navigate(`/select-difficulty/${data.roomId}`, { 
+                  state: musicData 
+                });
               }
             })
             .catch((err) => {
@@ -148,6 +155,13 @@ const MatchRoom = () => {
         <>
           <div className="text-center mt-10">
             <p>ログイン中: {user.email || user.displayName}</p>
+            {musicData.musicType && (
+              <div className="mb-4 p-4 bg-blue-100 rounded-lg">
+                <p className="font-bold">選択楽曲:</p>
+                <p>{musicData.musicData?.title || '楽曲名不明'}</p>
+                {musicData.difficulty && <p>難易度: {musicData.difficulty}</p>}
+              </div>
+            )}
             <p>マッチングを開始するにはボタンをクリックしてください。</p>
           </div>
           <button 

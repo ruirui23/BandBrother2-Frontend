@@ -75,6 +75,13 @@ export default function Play() {
   }, [difficulty, reset, nav, diffObj.notes]);
 
   useEffect(() => {
+    if (started && time >= 15) {
+      soundRef.current?.stop();
+      if(nav) nav('/result', { state: scoreRef.current });
+    }
+  }, [time, started, nav]);
+
+  useEffect(() => {
     if (!isSoundLoaded || !soundRef.current) return;
 
     const onFirstKey = (e) => {

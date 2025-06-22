@@ -1,7 +1,8 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
-import { auth } from '../firebase';
+import { auth, db } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import song from '../data/tutorial.json';
 import useRhythmGame from '../hooks/useRhythmGame';
 import RhythmGameEngine from '../components/RhythmGameEngine';
@@ -10,9 +11,17 @@ import RhythmGameEngine from '../components/RhythmGameEngine';
 export default function MultiPlay() {
   const { roomId, difficulty = 'Easy' } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   
   // 認証状態
   const [user, setUser] = useState(null);
+  
+  // 楽曲データ
+  const [currentSong, setCurrentSong] = useState(song);
+  const [loading, setLoading] = useState(false);
+  
+  // location.stateから楽曲データを取得
+  const musicData = location.state || {};
   
   // WebSocket接続
   const wsRef = useRef(null);
@@ -34,8 +43,42 @@ export default function MultiPlay() {
     return () => unsubscribe();
   }, [navigate]);
 
-  // リズムゲーム処理
-  const rhythmGame = useRhythmGame(song, difficulty, (gameData) => {
+  // 楽曲データの読み込み
+  useEffect(() => {
+    const loadMusicData = async () => {
+      if (musicData.musicType === 'custom' && musicData.chartId) {
+        setLoading(true);
+        try {
+          const chartDoc = await getDoc(doc(db, 'charts', musicData.chartId));
+          if (chartDoc.exists()) {
+            const chartData = chartDoc.data();
+            // カスタム楽曲データの構造を調整
+            const adaptedChart = {
+              ...chartData,
+              difficulty: chartData.difficulty || {
+                Easy: { notes: chartData.notes || [], level: 1 }
+              }
+            };
+            setCurrentSong(adaptedChart);
+          } else {
+            console.error('Chart not found');
+            setCurrentSong(song); // フォールバック
+          }
+        } catch (error) {
+          console.error('Error loading chart:', error);
+          setCurrentSong(song); // フォールバック
+        }
+        setLoading(false);
+      } else if (musicData.musicData) {
+        setCurrentSong(musicData.musicData);
+      }
+    };
+    
+    loadMusicData();
+  }, [musicData]);
+
+  // リズムゲーム処理（currentSongが有効な場合のみ）
+  const rhythmGame = useRhythmGame(currentSong || song, difficulty, (gameData) => {
     // WebSocketでゲーム終了通知
     if (wsRef.current && wsConnected && user) {
       wsRef.current.send(JSON.stringify({
@@ -192,6 +235,14 @@ export default function MultiPlay() {
     }
   }, [rhythmGame.score, rhythmGame.gameState, wsConnected, roomId, user]);
 
+
+  if (loading || !currentSong) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black text-white text-2xl">
+        楽曲データ読み込み中...
+      </div>
+    );
+  }
 
   return (
     <RhythmGameEngine
