@@ -77,7 +77,7 @@ const EditorLane = React.memo(({ lane, notes, onNotesChange, duration, gridWidth
 export default function ChartEditor() {
   const [title, setTitle] = useState('');
   const [bpm, setBpm] = useState(120);
-  const [duration, setDuration] = useState(15);
+  const [duration, setDuration] = useState(28);
   const [notes, setNotes] = useState([]);
   const [selectedSong, setSelectedSong] = useState(LOCAL_SONGS[0].url);
   const [audioError, setAudioError] = useState(false);
@@ -115,7 +115,7 @@ export default function ChartEditor() {
   const handleNewChart = () => {
     setTitle('');
     setBpm(120);
-    setDuration(15);
+    setDuration(28);
     setNotes([]);
     setSelectedSong(LOCAL_SONGS[0].url);
     setEditingChartId(null);
@@ -128,6 +128,15 @@ export default function ChartEditor() {
       setAudioError(false);
     }
   }, [selectedSong, uploadedAudioUrl]);
+
+  // 音声の長さを自動検出
+  const handleAudioLoadedMetadata = () => {
+    if (audioRef.current && audioRef.current.duration) {
+      const audioDuration = Math.ceil(audioRef.current.duration);
+      setDuration(audioDuration);
+      console.log(`音声の長さを検出: ${audioDuration}秒`);
+    }
+  };
 
   // カスタム音声ファイルのアップロード処理
   const handleAudioUpload = async (event) => {
@@ -388,6 +397,7 @@ export default function ChartEditor() {
               loop 
               className="hidden" 
               onError={handleAudioError}
+              onLoadedMetadata={handleAudioLoadedMetadata}
             />
             {audioError && (
               <span className="text-xs text-red-400 mt-1">音声ファイル読み込みエラー</span>
