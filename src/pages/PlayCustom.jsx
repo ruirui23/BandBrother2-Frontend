@@ -281,6 +281,11 @@ export default function PlayCustom() {
         Back
       </button>
 
+      {/* スコア表示 */}
+      <div className="absolute left-4 top-16 text-xl text-white">
+        Score: {score}
+      </div>
+
       <div className="relative w-full h-screen bg-black overflow-hidden">
         {/* 判定表示（中央） */}
         <div
@@ -297,10 +302,6 @@ export default function PlayCustom() {
             style={{ top: `calc(50% + ${y}px)` }}
             className="absolute left-0 right-0 transform -translate-y-1/2"
           >
-          {/* スコア表示 */}
-          <div className="absolute left-4 top-16 text-xl text-white">
-            Score: {score}
-          </div>
             <HitLine lane={index} />
           </div>
         ))}

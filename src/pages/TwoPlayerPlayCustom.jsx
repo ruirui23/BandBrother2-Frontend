@@ -16,15 +16,12 @@ const P1_KEY_TO_LANE = { KeyQ: 0, KeyW: 1, KeyE: 2, KeyR: 3 };
 
 // --- Player 2 (Bottom Screen) ---
 const P2_LANE_Y_POS = [-96, -32, 32, 96];
-const P2_KEY_TO_LANE = { KeyU: 0, KeyI: 1, KeyO: 2, KeyP: 3 };
+const P2_KEY_TO_LANE = { 'KeyU': 0, 'KeyI': 1, 'KeyO': 2, 'KeyP': 3 };
 
-const ALL_VALID_KEYS = [
-  ...Object.keys(P1_KEY_TO_LANE),
-  ...Object.keys(P2_KEY_TO_LANE),
-];
+const ALL_VALID_KEYS = [...Object.keys(P1_KEY_TO_LANE), ...Object.keys(P2_KEY_TO_LANE)];
 
 export default function TwoPlayerPlayCustom() {
-  const { chartId, c1 } = useParams();
+  const { chartId } = useParams();
   const nav = useNavigate();
 
   const [notes, setNotes] = useState({ p1: [], p2: [] });
@@ -54,59 +51,52 @@ export default function TwoPlayerPlayCustom() {
   const timeoutRef2 = useRef(null);
   const [judgementColor2, setJudgementColor2] = useState("text-yellow-400");
 
+  const chartDataRef = useRef(null);
+
   useEffect(() => {
     const fetchChart = async () => {
       try {
-        const chartIdToUse = chartId || c1; // 新しいルートと古いルートの両方に対応
-        if (!chartIdToUse) throw new Error('Chart ID is missing.');
-        
-        const snap = await getDoc(doc(db, 'charts', chartIdToUse));
-        if (!snap.exists()) throw new Error('Chart not found.');
+        if (!chartId) {
+            console.error("chartId from useParams is missing");
+            throw new Error('譜面IDが指定されていません。');
+        }
+        const snap = await getDoc(doc(db, 'charts', chartId));
+        if (!snap.exists()) throw new Error('指定された譜面が見つかりません。');
 
         const chartData = snap.data();
         chartDataRef.current = chartData;
-        setOffset(chartData.offset ?? 0);
+        setOffset(chartData.offset || 0);
 
-        const allNotes = (chartData.notes ?? [])
-            .sort((a, b) => a.time - b.time)
-            .map(n => ({ ...n, id: `${n.time}-${n.lane}`, hit: false, missed: false }));
+        // 取得した譜面のノーツをプレイヤー1と2に複製する
+        const baseNotes = (chartData.notes ?? []).sort((a, b) => a.time - b.time);
 
         setNotes({
-          p1: chartNotes.map((n) => ({
-            ...n,
-            id: `p1-${n.time}-${n.lane}`,
-            hit: false,
-            missed: false,
-          })),
-          p2: chartNotes.map((n) => ({
-            ...n,
-            id: `p2-${n.time}-${n.lane}`,
-            hit: false,
-            missed: false,
-          })),
+          p1: baseNotes.map(n => ({ ...n, id: `p1-${n.time}-${n.lane}`, hit: false, missed: false })),
+          p2: baseNotes.map(n => ({ ...n, id: `p2-${n.time}-${n.lane}`, hit: false, missed: false })),
         });
 
-        const audioUrl = chartData.audio?.trim() || "/audio/Henceforth.mp3";
+        const audioUrl = chartData.audio?.trim() || '/audio/Henceforth.mp3';
         soundRef.current = new Howl({
           src: [audioUrl],
           html5: true,
           onload: () => setLoading(false),
-          onerror: () => {
+          onerror: (id, err) => {
+            console.error("Audio load error:", err);
+            setError('音声の読み込みに失敗しました。');
             setLoading(false);
-            setError("Failed to load audio.");
           },
           onend: () => {
-            if (resultTimeoutRef.current)
-              clearTimeout(resultTimeoutRef.current);
-            nav("/result", {
-              state: {
-                counts1: p1ScoreRef.current,
-                score1: p1ScoreRef.current.score,
-                counts2: p2ScoreRef.current,
-                score2: p2ScoreRef.current.score,
-              },
-            });
-          },
+            if (!resultTimeoutRef.current) {
+              resultTimeoutRef.current = setTimeout(() => {
+                // リザルト画面に渡すデータを整形
+                const resultData = {
+                  counts1: p1ScoreRef.current, score1: p1ScoreRef.current.score,
+                  counts2: p2ScoreRef.current, score2: p2ScoreRef.current.score,
+                };
+                nav('/result', { state: resultData });
+              }, 500);
+            }
+          }
         });
 
         // 音声の長さを検出して、その長さまでノーツを自動生成
@@ -118,8 +108,8 @@ export default function TwoPlayerPlayCustom() {
 
             // 既存のノーツの最大時間を取得
             const existingMaxTime =
-              chartNotes.length > 0
-                ? Math.max(...chartNotes.map((n) => n.time))
+              baseNotes.length > 0
+                ? Math.max(...baseNotes.map((n) => n.time))
                 : 0;
 
             // 音声の長さまでノーツが不足している場合、自動生成
@@ -129,7 +119,7 @@ export default function TwoPlayerPlayCustom() {
               const beatInterval = 60 / bpm; // 1拍の間隔（秒）
 
               // 既存のノーツのパターンを分析して、そのパターンを繰り返す
-              const patternNotes = chartNotes.slice(0, 4); // 最初の4つのノーツをパターンとして使用
+              const patternNotes = baseNotes.slice(0, 4); // 最初の4つのノーツをパターンとして使用
 
               if (patternNotes.length > 0) {
                 let currentTime = existingMaxTime + beatInterval;
@@ -160,7 +150,7 @@ export default function TwoPlayerPlayCustom() {
               }
 
               // 自動生成したノーツを追加
-              const allNotes = [...chartNotes, ...additionalNotes];
+              const allNotes = [...baseNotes, ...additionalNotes];
               setNotes({
                 p1: allNotes.map((n) => ({
                   ...n,
@@ -181,13 +171,13 @@ export default function TwoPlayerPlayCustom() {
               );
             } else {
               setNotes({
-                p1: chartNotes.map((n) => ({
+                p1: baseNotes.map((n) => ({
                   ...n,
                   id: `p1-${n.time}-${n.lane}`,
                   hit: false,
                   missed: false,
                 })),
-                p2: chartNotes.map((n) => ({
+                p2: baseNotes.map((n) => ({
                   ...n,
                   id: `p2-${n.time}-${n.lane}`,
                   hit: false,
@@ -197,13 +187,13 @@ export default function TwoPlayerPlayCustom() {
             }
           } else {
             setNotes({
-              p1: chartNotes.map((n) => ({
+              p1: baseNotes.map((n) => ({
                 ...n,
                 id: `p1-${n.time}-${n.lane}`,
                 hit: false,
                 missed: false,
               })),
-              p2: chartNotes.map((n) => ({
+              p2: baseNotes.map((n) => ({
                 ...n,
                 id: `p2-${n.time}-${n.lane}`,
                 hit: false,
@@ -213,10 +203,12 @@ export default function TwoPlayerPlayCustom() {
           }
         });
       } catch (e) {
-        setError('譜面データの取得に失敗しました。');
+        console.error("Chart fetch error:", e);
+        setError(e.message || '譜面データの取得に失敗しました。');
         setLoading(false);
       }
     };
+
     p1ScoreRef.current = { perfect: 0, good: 0, miss: 0, score: 0 };
     p2ScoreRef.current = { perfect: 0, good: 0, miss: 0, score: 0 };
     setP1Score({ perfect: 0, good: 0, miss: 0, score: 0 });
@@ -226,7 +218,7 @@ export default function TwoPlayerPlayCustom() {
         soundRef.current?.unload();
         if (resultTimeoutRef.current) clearTimeout(resultTimeoutRef.current);
     }
-  }, [chartId, c1, nav]);
+  }, [chartId, nav]);
 
   const showJudgement1 = (text) => {
     if (timeoutRef1.current) clearTimeout(timeoutRef1.current);
@@ -311,66 +303,44 @@ export default function TwoPlayerPlayCustom() {
     handleMisses();
   });
 
-  const onKey = useCallback(
-    (e) => {
-      if (!started || !ALL_VALID_KEYS.includes(e.code)) return;
+  const onKey = useCallback((e) => {
+    if (!started || !ALL_VALID_KEYS.includes(e.code)) return;
+    
+    const currentTime = soundRef.current?.seek() || 0;
+    const isP1Key = Object.keys(P1_KEY_TO_LANE).includes(e.code);
+    
+    const player = isP1Key ? 'p1' : 'p2';
+    const targetLane = isP1Key ? P1_KEY_TO_LANE[e.code] : P2_KEY_TO_LANE[e.code];
+    const scoreRef = isP1Key ? p1ScoreRef : p2ScoreRef;
+    const currentNotes = notes[player];
 
-      const currentTime = soundRef.current?.seek() || 0;
-      const isP1Key = Object.keys(P1_KEY_TO_LANE).includes(e.code);
+    let bestMatchIndex = -1;
+    let minDistance = Infinity;
 
-      const player = isP1Key ? "p1" : "p2";
-      const targetLane = isP1Key
-        ? P1_KEY_TO_LANE[e.code]
-        : P2_KEY_TO_LANE[e.code];
-      const scoreRef = isP1Key ? p1ScoreRef : p2ScoreRef;
-
-      let bestMatchIndex = -1;
-      let minDistance = Infinity;
-
-      notes[player].forEach((n, index) => {
+    currentNotes.forEach((n, index) => {
         if (n.lane !== targetLane || n.hit || n.missed) return;
-        const distance = Math.abs(
-          HIT_X - (HIT_X + (n.time - currentTime - offset) * NOTE_SPEED)
-        );
+        const distance = Math.abs(HIT_X - (HIT_X + (n.time - currentTime - offset) * NOTE_SPEED));
         if (distance < JUDGE.good && distance < minDistance) {
-          minDistance = distance;
-          bestMatchIndex = index;
+            minDistance = distance;
+            bestMatchIndex = index;
         }
-      });
+    });
 
-      if (bestMatchIndex === -1) return;
+    if (bestMatchIndex === -1) return;
 
-      if (minDistance < JUDGE.perfect) {
-        scoreRef.current.perfect++;
-        scoreRef.current.score += 5;
-        if (isP1Key) {
-          showJudgement1("Perfect");
-          setJudgementColor1("text-yellow-400");
-        } else {
-          showJudgement2("Perfect");
-          setJudgementColor2("text-yellow-400");
-        }
-      } else {
-        scoreRef.current.good++;
-        scoreRef.current.score += 2;
-        if (isP1Key) {
-          showJudgement1("Good");
-          setJudgementColor1("text-orange-500");
-        } else {
-          showJudgement2("Good");
-          setJudgementColor2("text-orange-500");
-        }
-      }
-
-      setNotes((prev) => ({
+    if (minDistance < JUDGE.perfect) {
+      scoreRef.current.perfect++;
+      scoreRef.current.score += 5;
+    } else {
+      scoreRef.current.good++;
+      scoreRef.current.score += 2;
+    }
+    
+    setNotes(prev => ({
         ...prev,
-        [player]: prev[player].map((n, idx) =>
-          idx === bestMatchIndex ? { ...n, hit: true } : n
-        ),
-      }));
-    },
-    [started, notes, offset]
-  );
+        [player]: prev[player].map((n, idx) => idx === bestMatchIndex ? {...n, hit: true} : n)
+    }));
+  }, [started, notes, offset]);
 
   useEffect(() => {
     if (loading) return;
