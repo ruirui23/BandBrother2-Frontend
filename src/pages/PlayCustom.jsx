@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Howl } from 'howler';
 import { db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
@@ -11,148 +11,183 @@ import HitLine from '../components/HitLine';
 
 const JUDGE = { perfect: 24, good: 48 };
 
+// レーンのY座標を定義
+const LANE_Y_POSITIONS = [-96, -32, 32, 96];
+
+// キーとレーンのマッピング
+const KEY_TO_LANE = {
+  'KeyD': 0,
+  'KeyF': 1,
+  'KeyJ': 2,
+  'KeyK': 3,
+};
+const VALID_KEYS = Object.keys(KEY_TO_LANE);
+
 export default function PlayCustom() {
   const { chartId } = useParams();
   const nav = useNavigate();
   const { add, reset, counts, score } = useScore();
-  const [chart, setChart] = useState(null);
-  const [notes, setNotes] = useState([]);
+
+  const notesRef = useRef([]);
   const [started, setStarted] = useState(false);
-  const [sound, setSound] = useState(null);
   const [time, setTime] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const soundRef = useRef(null);
+  const scoreRef = useRef({ counts, score });
+  const chartDataRef = useRef(null);
+
+  useEffect(() => {
+    return useScore.subscribe(
+      (state) => (scoreRef.current = { counts: state.counts, score: state.score })
+    );
+  }, []);
 
   useEffect(() => {
     const fetchChart = async () => {
-      if (!chartId) return;
-      const docRef = doc(db, 'charts', chartId);
-      const snap = await getDoc(docRef);
-      if (snap.exists()) {
+      try {
+        if (!chartId) throw new Error("Chart ID is missing.");
+        const docRef = doc(db, 'charts', chartId);
+        const snap = await getDoc(docRef);
+        if (!snap.exists()) throw new Error("Chart data does not exist.");
+        
         const chartData = snap.data();
-        setChart(chartData);
-        setNotes(Array.isArray(chartData.notes) ? chartData.notes.map(n => ({ ...n, hit: false })) : []);
-        const audioUrl = chartData.audio && chartData.audio.trim() !== '' ? chartData.audio : '/audio/Henceforth.mp3';
-        setSound(new Howl({ src: [audioUrl], html5: true }));
-      } else {
-        console.error('譜面データが存在しません');
-        setChart({ notes: [] });
-        setNotes([]);
+        chartDataRef.current = chartData;
+
+        notesRef.current = (chartData.notes ?? [])
+          .sort((a, b) => a.time - b.time)
+          .map(n => ({ ...n, id: `${n.time}-${n.lane}`, hit: false, missed: false }));
+        
+        const audioUrl = chartData.audio?.trim() || '/audio/Henceforth.mp3';
+        soundRef.current = new Howl({
+            src: [audioUrl],
+            html5: true,
+            onload: () => setLoading(false),
+            onerror: () => setError('音声の読み込みに失敗しました。'),
+            onend: () => {
+                setTimeout(() => nav('/result', { state: scoreRef.current }), 500);
+            }
+        });
+      } catch (e) {
+        setError('譜面データの取得に失敗しました。');
+        setLoading(false);
       }
     };
-    fetchChart();
     reset();
-  }, [chartId, reset]);
-
-  // 音源がある場合はHowl、ない場合はrequestAnimationFrameで進行
-  useEffect(() => {
-    if (sound === undefined) return;
-    if (sound) return; // 音源がある場合はuseGameLoopで管理するのでここで何もしない
-    let rafId;
-    let start = null;
-    let running = false;
-    const onFirstKey = () => {
-      if (!started) {
-        setStarted(true);
-        running = true;
-        start = performance.now();
-        const loop = (now) => {
-          if (!running) return;
-          setTime((now - start) / 1000);
-          if ((now - start) / 1000 < 15) {
-            rafId = requestAnimationFrame(loop);
-          } else {
-            setTime(15);
-          }
-        };
-        rafId = requestAnimationFrame(loop);
-      }
-    };
-    window.addEventListener('keydown', onFirstKey, { once: true });
+    fetchChart();
     return () => {
-      window.removeEventListener('keydown', onFirstKey);
-      running = false;
-      if (rafId) cancelAnimationFrame(rafId);
+        soundRef.current?.unload();
     };
-  }, [sound, started]);
+  }, [chartId, reset, nav]);
 
   useEffect(() => {
-    if (!sound) return;
+    if (loading || !soundRef.current) return;
     const onFirstKey = () => {
-      if (!started) {
-        setStarted(true);
-        sound.seek(0);
-        sound.play();
+      if (!soundRef.current.playing()) {
+         soundRef.current.play();
+         setStarted(true);
       }
     };
     window.addEventListener('keydown', onFirstKey, { once: true });
     return () => window.removeEventListener('keydown', onFirstKey);
-  }, [sound, started]);
+  }, [loading]);
 
   useGameLoop(() => {
-    if (started && sound) setTime(sound.seek() || 0);
+    if (!started || !soundRef.current) return;
+    const newTime = soundRef.current.seek();
+    if (typeof newTime !== 'number') return;
+    setTime(newTime);
+    
+    let misses = 0;
+    for (const n of notesRef.current) {
+        if (!n.hit && !n.missed && newTime - n.time > 0.2) {
+            n.missed = true;
+            misses++;
+        }
+    }
+    if (misses > 0) {
+        for(let i=0; i<misses; i++) add('miss');
+    }
   });
 
-  useEffect(() => {
-    if (started && time >= 15 && sound) {
-      sound.stop();
-      nav('/result', { state: { counts, score } });
-    }
-  }, [time, started, sound, nav, counts, score]);
+  const onKey = useCallback((e) => {
+    if (!started || !VALID_KEYS.includes(e.code)) return;
+    
+    const lane = KEY_TO_LANE[e.code];
+    const currentTime = soundRef.current?.seek() || 0;
 
-  const onKey = useCallback(
-    (e) => {
-      if (!started) return;
-      if (e.code !== 'Space') return;
-      const idx = notes.findIndex(
-        n => {
-          if (n.hit) return false;
-          const x = HIT_X + (n.time - time) * NOTE_SPEED;
-          return Math.abs(x - HIT_X) < JUDGE.good;
+    let bestMatchIndex = -1;
+    let minDistance = Infinity;
+
+    notesRef.current.forEach((n, index) => {
+        if (n.lane !== lane || n.hit || n.missed) return;
+        const distance = Math.abs(HIT_X - (HIT_X + (n.time - currentTime) * NOTE_SPEED));
+        if (distance < JUDGE.good && distance < minDistance) {
+            minDistance = distance;
+            bestMatchIndex = index;
         }
-      );
-      if (idx === -1) { add('miss'); return; }
-      const x = HIT_X + (notes[idx].time - time) * NOTE_SPEED;
-      if (Math.abs(x - HIT_X) < JUDGE.perfect) {
-        add('perfect');
-      } else {
-        add('good');
-      }
-      setNotes(notes => notes.map((n, i) => i === idx ? { ...n, hit: true } : n));
-    },
-    [notes, time, started, add]
-  );
+    });
+
+    if (bestMatchIndex === -1) return;
+
+    const note = notesRef.current[bestMatchIndex];
+    if (minDistance < JUDGE.perfect) add('perfect');
+    else add('good');
+    
+    note.hit = true;
+    setTime(currentTime);
+  }, [started, add]);
+
   useEffect(() => {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onKey]);
 
   useEffect(() => {
-    if (!started) return;
-    setNotes(notes => notes.map(n => {
-      if (!n.hit && time - n.time > 0.2 && !n.missed) {
-        n.missed = true;
-        add('miss');
-      }
-      return n;
-    }));
-  }, [time, started, add]);
+    if (started && chartDataRef.current && time >= (chartDataRef.current.duration || 15)) {
+      soundRef.current?.stop();
+      nav('/result', { state: scoreRef.current });
+    }
+  }, [time, started, nav]);
 
-  if (!chart || !Array.isArray(chart.notes)) return <div className="text-white">Loading...</div>;
-
-  // ノーツを右→左に流す（HIT_Xを基準に）
-  const visible = notes.filter(
-    n => !n.hit && n.time - time < WINDOW_SEC && (HIT_X + (n.time - time) * NOTE_SPEED) > -100 && (HIT_X + (n.time - time) * NOTE_SPEED) < window.innerWidth + 100
+  const visibleNotes = notesRef.current.filter(
+    n => !n.hit && !n.missed && Math.abs(n.time - time) < WINDOW_SEC
   );
+  const screenCenterY = typeof window !== 'undefined' ? window.innerHeight / 2 : 0;
+  
+  if (loading) return <div className="flex items-center justify-center h-screen bg-black text-white text-2xl">Loading Chart...</div>;
+  if (error) return <div className="flex items-center justify-center h-screen bg-black text-red-500 text-2xl">{error}</div>;
+  if (!started) return <div className="flex items-center justify-center h-screen bg-black text-white text-2xl">Press D, F, J, or K to start</div>;
 
   return (
     <div className="relative h-screen overflow-hidden bg-black">
-      {visible.map((n) => (
-        <Note
-          key={n.time}
-          x={HIT_X + (n.time - time) * NOTE_SPEED}
-          yOffset={0}
-        />
+      <button
+        className="absolute left-4 top-4 px-4 py-2 bg-gray-600 text-white rounded z-30"
+        onClick={() => nav(-1)}
+      >Back</button>
+
+      {/* スコア表示 */}
+      <div className="absolute left-4 top-16 text-xl text-white">
+        Score: {score}
+      </div>
+
+      {LANE_Y_POSITIONS.map((y, index) => (
+         <div key={index} style={{ top: `calc(50% + ${y}px)`}} className="absolute left-0 right-0 transform -translate-y-1/2">
+            <HitLine lane={index} />
+         </div>
       ))}
-      <HitLine />
+
+      {visibleNotes.map((n) => {
+        const yPos = screenCenterY + LANE_Y_POSITIONS[n.lane];
+        return (
+          <Note
+            key={n.id}
+            x={HIT_X + (n.time - time) * NOTE_SPEED}
+            y={yPos}
+            lane={n.lane}
+          />
+        )
+      })}
     </div>
   );
 }

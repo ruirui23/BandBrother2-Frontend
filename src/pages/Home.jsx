@@ -33,6 +33,7 @@ const Home = () => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
 
+      /*
       if (u) {
         const uid = u.uid;
 
@@ -53,6 +54,7 @@ const Home = () => {
             console.error("UID送信エラー:", err);
           });
       }
+      */
     });
     return () => unsubscribe();
   }, []);
@@ -146,9 +148,15 @@ const Home = () => {
           </button>
           <button
             className="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white text-xl font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
-            onClick={() => navigate('/match')}
+            onClick={() => navigate('/multi-music-select')}
           >
-            <FaGamepad /> マッチング
+            <FaGamepad /> マルチプレイ
+          </button>
+          <button
+            className="w-full py-4 bg-pink-600 hover:bg-pink-700 text-white text-xl font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
+            onClick={() => navigate('/custom-charts')}
+          >
+            <FaMusic /> カスタム譜面で遊ぶ
           </button>
         </div>
       ) : (
