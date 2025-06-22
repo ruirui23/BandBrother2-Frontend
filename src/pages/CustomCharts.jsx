@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
-import { FaPlay, FaMusic, FaClock, FaUser, FaSyncAlt } from 'react-icons/fa';
+import { FaPlay, FaMusic, FaClock, FaUser, FaSyncAlt, FaUsers } from 'react-icons/fa';
 
 export default function CustomCharts() {
   const [charts, setCharts] = useState([]);
@@ -38,6 +38,10 @@ export default function CustomCharts() {
 
   const playChart = (chartId) => {
     navigate(`/play-custom/${chartId}`);
+  };
+
+  const playTwoPlayerChart = (chartId) => {
+    navigate(`/play2-custom/${chartId}`);
   };
 
   const formatDate = (timestamp) => {
@@ -138,12 +142,20 @@ export default function CustomCharts() {
                       ノーツ数: {chart.notes?.length || 0}
                     </div>
                   </div>
-                  <button
-                    onClick={() => playChart(chart.id)}
-                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 font-bold transition-colors ml-4"
-                  >
-                    <FaPlay /> プレイ
-                  </button>
+                  <div className="flex flex-col gap-2 ml-4">
+                    <button
+                      onClick={() => playChart(chart.id)}
+                      className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 font-bold transition-colors"
+                    >
+                      <FaPlay /> 1人プレイ
+                    </button>
+                    <button
+                      onClick={() => playTwoPlayerChart(chart.id)}
+                      className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 font-bold transition-colors"
+                    >
+                      <FaUsers /> 2人プレイ
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

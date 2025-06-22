@@ -51,6 +51,7 @@ export default function App() {
         <Route path="/custom-charts" element={<RequireAuth><CustomCharts /></RequireAuth>} />
         <Route path="/play-custom/:chartId" element={<RequireAuth><PlayCustom /></RequireAuth>} />
         <Route path="/play/custom/:chartId" element={<RequireAuth><PlayCustom /></RequireAuth>} />
+        <Route path="/play2-custom/:chartId" element={<RequireAuth><TwoPlayerPlayCustom /></RequireAuth>} />
         <Route path="/play2/custom/:c1" element={<RequireAuth><TwoPlayerPlayCustom /></RequireAuth>} />
       </Routes>
     </BrowserRouter>

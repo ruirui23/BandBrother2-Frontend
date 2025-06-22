@@ -21,7 +21,7 @@ const P2_KEY_TO_LANE = { 'KeyU': 0, 'KeyI': 1, 'KeyO': 2, 'KeyP': 3 };
 const ALL_VALID_KEYS = [...Object.keys(P1_KEY_TO_LANE), ...Object.keys(P2_KEY_TO_LANE)];
 
 export default function TwoPlayerPlayCustom() {
-  const { c1 } = useParams();
+  const { chartId, c1 } = useParams();
   const nav = useNavigate();
 
   const [notes, setNotes] = useState({ p1: [], p2: [] });
@@ -36,14 +36,19 @@ export default function TwoPlayerPlayCustom() {
   const [time, setTime] = useState(0);
   const soundRef = useRef(null);
   const resultTimeoutRef = useRef(null);
+  const chartDataRef = useRef(null);
 
   useEffect(() => {
     const fetchChart = async () => {
       try {
-        const snap = await getDoc(doc(db, 'charts', c1));
+        const chartIdToUse = chartId || c1; // 新しいルートと古いルートの両方に対応
+        if (!chartIdToUse) throw new Error('Chart ID is missing.');
+        
+        const snap = await getDoc(doc(db, 'charts', chartIdToUse));
         if (!snap.exists()) throw new Error('Chart not found.');
 
         const chartData = snap.data();
+        chartDataRef.current = chartData;
         const chartNotes = chartData.notes ?? [];
         
         setOffset(chartData.offset ?? 0);
@@ -79,7 +84,7 @@ export default function TwoPlayerPlayCustom() {
         soundRef.current?.unload();
         if (resultTimeoutRef.current) clearTimeout(resultTimeoutRef.current);
     }
-  }, [c1, nav]);
+  }, [chartId, c1, nav]);
 
   const handleMisses = useCallback(() => {
     const currentTime = soundRef.current?.seek() ?? 0;
@@ -119,6 +124,20 @@ export default function TwoPlayerPlayCustom() {
     const newTime = soundRef.current.seek();
     if (typeof newTime !== 'number') return;
     setTime(newTime);
+    
+    // 可変長の譜面に対応した終了条件
+    if (chartDataRef.current && newTime >= (chartDataRef.current.duration || 15)) {
+      soundRef.current.stop();
+      if (resultTimeoutRef.current) clearTimeout(resultTimeoutRef.current);
+      nav('/result', { 
+        state: { 
+          counts1: p1ScoreRef.current, score1: p1ScoreRef.current.score,
+          counts2: p2ScoreRef.current, score2: p2ScoreRef.current.score,
+        }
+      });
+      return;
+    }
+    
     handleMisses();
   });
 
