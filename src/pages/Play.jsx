@@ -201,18 +201,13 @@ export default function Play() {
     typeof window !== "undefined" ? window.innerHeight / 2 : 0;
 
   /* ---------- 描画 ---------- */
-  if (!isSoundLoaded)
-    return (
-      <div className="flex items-center justify-center h-screen bg-black text-white text-2xl">
-        Loading...
-      </div>
-    );
-  if (!started)
-    return (
-      <div className="flex items-center justify-center h-screen bg-black text-white text-2xl">
-        Press D, F, J, or K to start
-      </div>
-    );
+  if (!isSoundLoaded) return <div className="flex items-center justify-center h-screen bg-black text-white text-2xl">Loading...</div>;
+  if (!started) return (
+    <div className="flex flex-col items-center justify-center h-screen bg-black text-white text-center">
+      <div className="text-2xl mb-4">上のレーンからD，F，J，Kを押してプレイしてね</div>
+      <div className="text-xl text-gray-300">タップしてスタート</div>
+    </div>
+  );
 
   return (
     <div className="relative h-screen overflow-hidden bg-black">

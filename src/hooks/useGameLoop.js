@@ -4,14 +4,14 @@ export default function useGameLoop(callback) {
   const last = useRef(performance.now());
 
   useEffect(() => {
-    let id;
-    const loop = now => {
-      const dt = (now - last.current) / 1000; // 秒
-      last.current = now;
+    let animationFrameId;
+    const loop = () => {
+      const dt = (performance.now() - last.current) / 1000; // 秒
+      last.current = performance.now();
       callback(dt);
-      id = requestAnimationFrame(loop);
+      animationFrameId = requestAnimationFrame(loop);
     };
-    id = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(id);
+    animationFrameId = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(animationFrameId);
   }, [callback]);
 }
