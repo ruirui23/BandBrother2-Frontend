@@ -6,6 +6,15 @@ import { HIT_X, NOTE_SPEED, WINDOW_SEC } from '../constants';
 
 const JUDGE = { perfect: 24, good: 48 };
 
+// キーとレーンのマッピング
+const KEY_TO_LANE = {
+  'KeyD': 0,
+  'KeyF': 1,
+  'KeyJ': 2,
+  'KeyK': 3,
+};
+const VALID_KEYS = Object.keys(KEY_TO_LANE);
+
 export default function useRhythmGame(songData, difficulty, onGameEnd) {
   const { add, reset, counts, score } = useScore();
   
@@ -13,7 +22,16 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
   const rawNotes = diffObj.notes ?? [];
   const offset = songData.offset ?? 0;
   
-  const [notes, setNotes] = useState(rawNotes.map(n => ({ ...n, hit: false })));
+  const notesRef = useRef([]);
+  const [notes, setNotes] = useState([]);
+  
+  // ノーツ初期化
+  useEffect(() => {
+    notesRef.current = rawNotes
+      .sort((a, b) => a.time - b.time)
+      .map(n => ({ ...n, id: `${n.time}-${n.lane || 0}`, hit: false, missed: false }));
+    setNotes(notesRef.current);
+  }, [rawNotes]);
   const [started, setStarted] = useState(false);
   const [sound] = useState(() => new Howl({ src: [songData.audio], html5: true }));
   const [time, setTime] = useState(0);
@@ -57,29 +75,40 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
 
   // キー入力判定
   const handleKeyPress = useCallback((e) => {
-    if (gameState !== 'playing' || !started) return;
-    if (e.code !== 'Space') return;
+    if (gameState !== 'playing' || !started || !VALID_KEYS.includes(e.code)) return;
     
-    const idx = notes.findIndex(n => {
-      if (n.hit) return false;
-      const x = HIT_X + (n.time - time - offset) * NOTE_SPEED;
-      return Math.abs(x - HIT_X) < JUDGE.good;
+    const lane = KEY_TO_LANE[e.code];
+    const currentTime = time;
+
+    // 押されたキーに対応するレーンの中で、最も判定ラインに近いノーツを探す
+    let bestMatchIndex = -1;
+    let minDistance = Infinity;
+
+    notesRef.current.forEach((n, index) => {
+        if (n.lane !== lane || n.hit || n.missed) return;
+        
+        const distance = Math.abs(HIT_X - (HIT_X + (n.time - currentTime - offset) * NOTE_SPEED));
+        
+        if (distance < JUDGE.good && distance < minDistance) {
+            minDistance = distance;
+            bestMatchIndex = index;
+        }
     });
-    
-    if (idx === -1) { 
-      add('miss'); 
-      return; 
+
+    if (bestMatchIndex === -1) {
+      // 対応レーンに叩けるノーツがなければ何もしない
+      return;
     }
-    
-    const x = HIT_X + (notes[idx].time - time - offset) * NOTE_SPEED;
-    if (Math.abs(x - HIT_X) < JUDGE.perfect) {
+
+    const note = notesRef.current[bestMatchIndex];
+    if (minDistance < JUDGE.perfect) {
       add('perfect');
     } else {
       add('good');
     }
-    
-    setNotes(notes => notes.map((n, i) => i === idx ? { ...n, hit: true } : n));
-  }, [notes, time, started, gameState, add, offset]);
+    note.hit = true;
+    setNotes([...notesRef.current]); // Force re-render
+  }, [time, started, gameState, add, offset]);
 
   // キーイベントリスナー
   useEffect(() => {
@@ -90,13 +119,21 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
   // ノーツ通過でmiss
   useEffect(() => {
     if (gameState !== 'playing' || !started) return;
-    notes.forEach((n, i) => {
-      if (!n.hit && time - n.time > 0.2 && !n.missed) {
-        n.missed = true;
+    let missedAny = false;
+    const updatedNotes = notesRef.current.map(n => {
+      if (!n.hit && !n.missed && time - (n.time - offset) > 0.2) {
         add('miss');
+        missedAny = true;
+        return { ...n, missed: true };
       }
+      return n;
     });
-  }, [time, started, notes, add, gameState]);
+    
+    if (missedAny) {
+      notesRef.current = updatedNotes;
+      setNotes([...notesRef.current]);
+    }
+  }, [time, started, gameState, add, offset]);
 
   // 描画対象ノーツ
   const visibleNotes = notes.filter(
