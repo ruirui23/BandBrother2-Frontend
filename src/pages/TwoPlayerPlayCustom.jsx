@@ -186,7 +186,12 @@ export default function TwoPlayerPlayCustom() {
 
   if (loading) return <div className="flex items-center justify-center h-screen bg-black text-white text-2xl">Loading Charts...</div>;
   if (error) return <div className="flex items-center justify-center h-screen bg-black text-red-500 text-2xl">{error}</div>;
-  if (!started) return <div className="flex items-center justify-center h-screen bg-black text-white text-2xl">Press Any Key To Start</div>;
+  if (!started) return (
+    <div className="flex flex-col items-center justify-center h-screen bg-black text-white text-center">
+      <div className="text-2xl mb-4">１Pは上のレーンからQ，W，E，Rキー　２PはU，I，O，Pキーを押してプレイしてね</div>
+      <div className="text-xl text-gray-300">タップしてスタート</div>
+    </div>
+  );
 
   const screenHeight = window.innerHeight;
 

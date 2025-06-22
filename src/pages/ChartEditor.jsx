@@ -24,7 +24,7 @@ const LANE_COLORS = [
   { name: 'Green', bg: 'bg-green-900/50', border: 'border-green-400', note: 'bg-green-300', noteBorder: 'border-green-500' },
 ];
 
-const EditorLane = React.memo(({ lane, notes, onNotesChange, duration, gridWidth, beatCount, gridStep, colorConfig }) => {
+const EditorLane = React.memo(React.forwardRef(({ lane, notes, onNotesChange, duration, gridWidth, beatCount, gridStep, colorConfig }, ref) => {
   const getX = (time) => (time / duration) * gridWidth;
 
   const handleGridClick = (e) => {
@@ -43,7 +43,7 @@ const EditorLane = React.memo(({ lane, notes, onNotesChange, duration, gridWidth
   };
 
   return (
-    <div className={`w-full h-24 ${colorConfig.bg} rounded-xl border-2 ${colorConfig.border} shadow-inner flex items-center justify-center relative overflow-x-auto`} style={{ minWidth: 800, maxWidth: 1400 }}>
+    <div ref={ref} className={`w-full h-24 ${colorConfig.bg} rounded-xl border-2 ${colorConfig.border} shadow-inner flex items-center justify-center relative overflow-x-auto`} style={{ minWidth: 800, maxWidth: 1400 }}>
       <div
         className="absolute inset-0 cursor-pointer"
         style={{ width: gridWidth, height: '100%' }}
@@ -73,7 +73,7 @@ const EditorLane = React.memo(({ lane, notes, onNotesChange, duration, gridWidth
       </div>
     </div>
   );
-});
+}));
 
 export default function ChartEditor() {
   const [title, setTitle] = useState('');
@@ -88,6 +88,7 @@ export default function ChartEditor() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const audioRef = useRef(null);
+  const laneRefs = useRef([]);
   const navigate = useNavigate();
 
   const [editingChartId, setEditingChartId] = useState(null);
@@ -255,6 +256,21 @@ export default function ChartEditor() {
   const GRID_WIDTH = Math.max(GRID_WIDTH_BASE, beatCount * 40); // 1拍40pxで伸縮
   const gridStep = GRID_WIDTH / beatCount;
 
+  const updateScrollPosition = useCallback((time) => {
+    if (laneRefs.current.length > 0 && laneRefs.current[0]) {
+      const firstLane = laneRefs.current[0];
+      if (!firstLane) return;
+      const visibleWidth = firstLane.clientWidth;
+      const targetScrollLeft = (time / duration) * GRID_WIDTH - (visibleWidth / 2);
+      
+      laneRefs.current.forEach(lane => {
+        if (lane) {
+          lane.scrollLeft = targetScrollLeft;
+        }
+      });
+    }
+  }, [duration, GRID_WIDTH]);
+
   const saveChart = async () => {
     if (!title || !selectedSong) {
       alert('タイトルと音源は必須です');
@@ -318,12 +334,15 @@ export default function ChartEditor() {
     if (audioRef.current) {
       audioRef.current.currentTime = time;
       setCurrentTime(time);
+      updateScrollPosition(time); // シーク時にもスクロールを更新
     }
   };
 
   const handleTimeUpdate = () => {
     if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime);
+      const newTime = audioRef.current.currentTime;
+      setCurrentTime(newTime);
+      updateScrollPosition(newTime); // 再生中もスクロールを更新
     }
   };
 
@@ -445,7 +464,18 @@ export default function ChartEditor() {
           <div className="bg-gray-800 p-6 rounded-2xl shadow-lg flex-grow">
             <div className="space-y-2">
               {LANE_COLORS.map((color, index) => (
-                <EditorLane key={index} lane={index} notes={notes} onNotesChange={setNotes} duration={duration} gridWidth={GRID_WIDTH} beatCount={beatCount} gridStep={gridStep} colorConfig={color} />
+                <EditorLane
+                  key={index}
+                  ref={el => laneRefs.current[index] = el}
+                  lane={index}
+                  notes={notes}
+                  onNotesChange={setNotes}
+                  duration={duration}
+                  gridWidth={GRID_WIDTH}
+                  beatCount={beatCount}
+                  gridStep={gridStep}
+                  colorConfig={color}
+                />
               ))}
             </div>
             <div className="mt-4">
