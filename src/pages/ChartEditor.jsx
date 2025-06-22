@@ -23,7 +23,7 @@ const LANE_COLORS = [
   { name: 'Green', bg: 'bg-green-900/50', border: 'border-green-400', note: 'bg-green-300', noteBorder: 'border-green-500' },
 ];
 
-const EditorLane = React.memo(({ lane, notes, onNotesChange, duration, gridWidth, beatCount, gridStep, colorConfig }) => {
+const EditorLane = React.memo(React.forwardRef(({ lane, notes, onNotesChange, duration, gridWidth, beatCount, gridStep, colorConfig }, ref) => {
   const getX = (time) => (time / duration) * gridWidth;
 
   const handleGridClick = (e) => {
@@ -42,7 +42,7 @@ const EditorLane = React.memo(({ lane, notes, onNotesChange, duration, gridWidth
   };
 
   return (
-    <div className={`w-full h-24 ${colorConfig.bg} rounded-xl border-2 ${colorConfig.border} shadow-inner flex items-center justify-center relative overflow-x-auto`} style={{ minWidth: 800, maxWidth: 1400 }}>
+    <div ref={ref} className={`w-full h-24 ${colorConfig.bg} rounded-xl border-2 ${colorConfig.border} shadow-inner flex items-center justify-center relative overflow-x-auto`} style={{ minWidth: 800, maxWidth: 1400 }}>
       <div
         className="absolute inset-0 cursor-pointer"
         style={{ width: gridWidth, height: '100%' }}
@@ -72,7 +72,7 @@ const EditorLane = React.memo(({ lane, notes, onNotesChange, duration, gridWidth
       </div>
     </div>
   );
-});
+}));
 
 export default function ChartEditor() {
   const [title, setTitle] = useState('');
@@ -86,6 +86,7 @@ export default function ChartEditor() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const audioRef = useRef(null);
+  const laneRefs = useRef([]);
   const navigate = useNavigate();
 
   const [editingChartId, setEditingChartId] = useState(null);
@@ -260,6 +261,21 @@ export default function ChartEditor() {
   const GRID_WIDTH = Math.max(GRID_WIDTH_BASE, beatCount * 40); // 1拍40pxで伸縮
   const gridStep = GRID_WIDTH / beatCount;
 
+  const updateScrollPosition = useCallback((time) => {
+    if (laneRefs.current.length > 0 && laneRefs.current[0]) {
+      const firstLane = laneRefs.current[0];
+      if (!firstLane) return;
+      const visibleWidth = firstLane.clientWidth;
+      const targetScrollLeft = (time / duration) * GRID_WIDTH - (visibleWidth / 2);
+      
+      laneRefs.current.forEach(lane => {
+        if (lane) {
+          lane.scrollLeft = targetScrollLeft;
+        }
+      });
+    }
+  }, [duration, GRID_WIDTH]);
+
   const saveChart = async () => {
     if (!title || !selectedSong) {
       alert('タイトルと音源は必須です');
@@ -319,6 +335,16 @@ export default function ChartEditor() {
       } else {
         audioRef.current.pause();
       }
+    }
+  };
+
+
+
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      const newTime = audioRef.current.currentTime;
+      setCurrentTime(newTime);
+      updateScrollPosition(newTime); // 再生中もスクロールを更新
     }
   };
 
@@ -434,27 +460,54 @@ export default function ChartEditor() {
                   <option value={uploadedAudioUrl}>アップロードした音源</option>
                 )}
               </select>
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="file"
-                    accept="audio/*"
-                    onChange={handleAudioUpload}
-                    className="text-xs text-white file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-blue-500 file:text-white hover:file:bg-blue-600"
-                    disabled={isUploading}
-                  />
-                  {isUploading && (
-                    <span className="text-xs text-yellow-400">アップロード中... {uploadProgress}%</span>
-                  )}
-                </div>
-                {isUploading && (
-                  <div className="w-48 bg-gray-600 rounded-full h-2">
-                    <div 
-                      className="bg-blue-500 h-2 rounded-full transition-all duration-300" 
-                      style={{ width: `${uploadProgress}%` }}
-                    />
-                  </div>
-                )}
+/* --- Upload Area --- */
+<div className="flex flex-col gap-2">
+  {/* ファイル選択 + テキスト進捗 */}
+  <div className="flex items-center gap-2">
+    <input
+      type="file"
+      accept="audio/*"
+      onChange={handleAudioUpload}
+      /*  全幅・大きめデザイン（ruirui_game）＋アップロード中は無効化（develop） */
+      className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg
+                 file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white
+                 hover:file:bg-blue-700 disabled:opacity-50"
+      disabled={isUploading}
+    />
+    {isUploading && (
+      /* ✔️  develop のテキスト進捗 */
+      <span className="text-sm text-yellow-400">
+        アップロード中… {uploadProgress}%
+      </span>
+    )}
+  </div>
+
+  {/* ✔️  develop のプログレスバー */}
+  {isUploading && (
+    <div className="w-full bg-gray-600 rounded-full h-2">
+      <div
+        className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+        style={{ width: `${uploadProgress}%` }}
+      />
+    </div>
+  )}
+
+  {/* ✔️  ruirui_game のエラーメッセージ */}
+  {audioError && (
+    <p className="text-sm text-red-500">音源の読み込みに失敗しました</p>
+  )}
+</div>
+
+<hr className="my-6 border-gray-600" />
+
+<button
+  onClick={saveChart}
+  className="w-full px-4 py-3 bg-yellow-500 hover:bg-yellow-600 rounded-lg
+             text-gray-900 font-bold transition"
+>
+  {editingChartId ? '譜面を更新する' : '譜面を保存する'}
+</button>
+
               </div>
             </div>
             <audio 
