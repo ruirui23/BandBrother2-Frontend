@@ -224,6 +224,11 @@ export default function PlayCustom() {
         onClick={() => nav(-1)}
       >Back</button>
 
+      {/* スコア表示 */}
+      <div className="absolute left-4 top-16 text-xl text-white">
+        Score: {score}
+      </div>
+
       {LANE_Y_POSITIONS.map((y, index) => (
          <div key={index} style={{ top: `calc(50% + ${y}px)`}} className="absolute left-0 right-0 transform -translate-y-1/2">
             <HitLine lane={index} />
