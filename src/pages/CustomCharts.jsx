@@ -37,11 +37,11 @@ export default function CustomCharts() {
   }, []);
 
   const playChart = (chartId) => {
-    navigate(`/play-custom/${chartId}`);
+    navigate(`/play/custom/${chartId}`);
   };
 
   const playTwoPlayerChart = (chartId) => {
-    navigate(`/play2-custom/${chartId}`);
+    navigate(`/twoplayer/play/custom/${chartId}`);
   };
 
   const formatDate = (timestamp) => {
