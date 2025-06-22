@@ -49,31 +49,38 @@ export default function TwoPlayerPlayCustom() {
 
         const chartData = snap.data();
         chartDataRef.current = chartData;
-        const chartNotes = chartData.notes ?? [];
         
         setOffset(chartData.offset ?? 0);
+
+        const allNotes = (chartData.notes ?? [])
+            .sort((a, b) => a.time - b.time)
+            .map(n => ({ ...n, id: `${n.time}-${n.lane}`, hit: false, missed: false }));
+
         setNotes({
-            p1: chartNotes.map(n => ({...n, id: `p1-${n.time}-${n.lane}`, hit: false, missed: false })),
-            p2: chartNotes.map(n => ({...n, id: `p2-${n.time}-${n.lane}`, hit: false, missed: false }))
+            p1: allNotes.filter(n => n.lane < 4),
+            p2: allNotes.filter(n => n.lane >= 4).map(n => ({ ...n, lane: n.lane - 4 })),
         });
-        
+
         const audioUrl = chartData.audio?.trim() || '/audio/Henceforth.mp3';
         soundRef.current = new Howl({
-          src: [audioUrl], html5: true,
-          onload: () => setLoading(false),
-          onerror: () => { setLoading(false); setError("Failed to load audio."); },
-          onend: () => {
-            if (resultTimeoutRef.current) clearTimeout(resultTimeoutRef.current);
-            nav('/result', { 
-                state: { 
-                    counts1: p1ScoreRef.current, score1: p1ScoreRef.current.score,
-                    counts2: p2ScoreRef.current, score2: p2ScoreRef.current.score,
+            src: [audioUrl],
+            html5: true,
+            onload: () => setLoading(false),
+            onerror: () => setError('音声の読み込みに失敗しました。'),
+            onend: () => {
+                if (!resultTimeoutRef.current) {
+                  resultTimeoutRef.current = setTimeout(() => {
+                    const resultData = {
+                      p1: p1ScoreRef.current,
+                      p2: p2ScoreRef.current,
+                    };
+                    nav('/result', { state: resultData });
+                  }, 500);
                 }
-            });
-          }
+            }
         });
       } catch (e) {
-        setError(e.message);
+        setError('譜面データの取得に失敗しました。');
         setLoading(false);
       }
     };
@@ -181,7 +188,7 @@ export default function TwoPlayerPlayCustom() {
 
    useEffect(() => {
     if(loading) return;
-    const onFirstKey = (e) => {
+    const onFirstKey = () => {
         if (!soundRef.current?.playing()) {
             soundRef.current?.play();
             setStarted(true);

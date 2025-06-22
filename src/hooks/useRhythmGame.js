@@ -44,7 +44,7 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
 
   // 音声ファイル初期化
   useEffect(() => {
-    const audioSrc = songData?.audio || '/audio/Henceforth.mp3';
+    const audioSrc = songData?.audio || '';
     const newSound = new Howl({ 
       src: [audioSrc], 
       html5: true 
