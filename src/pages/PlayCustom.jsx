@@ -69,70 +69,6 @@ export default function PlayCustom() {
             }
         });
 
-        // 音声の長さを検出して、その長さまでノーツを自動生成
-        soundRef.current.once('load', () => {
-          const audioDuration = soundRef.current.duration();
-          if (audioDuration && audioDuration > 0) {
-            const chartDuration = chartData.duration || 15;
-            const maxTime = Math.max(audioDuration, chartDuration);
-            
-            // 既存のノーツの最大時間を取得
-            const existingMaxTime = notesRef.current.length > 0 
-              ? Math.max(...notesRef.current.map(n => n.time))
-              : 0;
-            
-            // 音声の長さまでノーツが不足している場合、自動生成
-            if (existingMaxTime < maxTime) {
-              const additionalNotes = [];
-              const bpm = chartData.bpm || 120;
-              const beatInterval = 60 / bpm; // 1拍の間隔（秒）
-              
-              // 既存のノーツのパターンを分析して、そのパターンを繰り返す
-              const patternNotes = notesRef.current.slice(0, 4); // 最初の4つのノーツをパターンとして使用
-              
-              if (patternNotes.length > 0) {
-                let currentTime = existingMaxTime + beatInterval;
-                while (currentTime <= maxTime) {
-                  patternNotes.forEach((patternNote, index) => {
-                    const newTime = currentTime + (index * beatInterval / 4);
-                    if (newTime <= maxTime) {
-                      additionalNotes.push({
-                        time: newTime,
-                        lane: patternNote.lane,
-                        id: `auto-${newTime}-${patternNote.lane}`,
-                        hit: false,
-                        missed: false
-                      });
-                    }
-                  });
-                  currentTime += beatInterval;
-                }
-              } else {
-                // パターンがない場合は、シンプルなパターンを生成
-                let currentTime = 1;
-                while (currentTime <= maxTime) {
-                  for (let lane = 0; lane < 4; lane++) {
-                    additionalNotes.push({
-                      time: currentTime + (lane * 0.25),
-                      lane: lane,
-                      id: `auto-${currentTime + (lane * 0.25)}-${lane}`,
-                      hit: false,
-                      missed: false
-                    });
-                  }
-                  currentTime += 1;
-                }
-              }
-              
-              // 自動生成したノーツを追加
-              notesRef.current = [...notesRef.current, ...additionalNotes]
-                .sort((a, b) => a.time - b.time);
-              
-              console.log(`音声の長さ: ${audioDuration}秒, 自動生成したノーツ: ${additionalNotes.length}個`);
-            }
-          }
-        });
-
       } catch (e) {
         setError('譜面データの取得に失敗しました。');
         setLoading(false);
@@ -223,6 +159,11 @@ export default function PlayCustom() {
         className="absolute left-4 top-4 px-4 py-2 bg-gray-600 text-white rounded z-30"
         onClick={() => nav(-1)}
       >Back</button>
+
+      {/* スコア表示 */}
+      <div className="absolute left-4 top-16 text-xl text-white">
+        Score: {score}
+      </div>
 
       {LANE_Y_POSITIONS.map((y, index) => (
          <div key={index} style={{ top: `calc(50% + ${y}px)`}} className="absolute left-0 right-0 transform -translate-y-1/2">

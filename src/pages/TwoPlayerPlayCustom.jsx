@@ -36,6 +36,7 @@ export default function TwoPlayerPlayCustom() {
   const [time, setTime] = useState(0);
   const soundRef = useRef(null);
   const resultTimeoutRef = useRef(null);
+  const chartDataRef = useRef(null);
 
   useEffect(() => {
     const fetchChart = async () => {
@@ -44,102 +45,38 @@ export default function TwoPlayerPlayCustom() {
         if (!snap.exists()) throw new Error('Chart not found.');
 
         const chartData = snap.data();
-        const chartNotes = chartData.notes ?? [];
-        
-        setOffset(chartData.offset ?? 0);
+        chartDataRef.current = chartData;
+
+        const allNotes = (chartData.notes ?? [])
+            .sort((a, b) => a.time - b.time)
+            .map(n => ({ ...n, id: `${n.time}-${n.lane}`, hit: false, missed: false }));
+
         setNotes({
-            p1: chartNotes.map(n => ({...n, id: `p1-${n.time}-${n.lane}`, hit: false, missed: false })),
-            p2: chartNotes.map(n => ({...n, id: `p2-${n.time}-${n.lane}`, hit: false, missed: false }))
-        });
-        
-        const audioUrl = chartData.audio?.trim() || '/audio/Henceforth.mp3';
-        soundRef.current = new Howl({
-          src: [audioUrl], html5: true,
-          onload: () => setLoading(false),
-          onerror: () => { setLoading(false); setError("Failed to load audio."); },
-          onend: () => {
-            if (resultTimeoutRef.current) clearTimeout(resultTimeoutRef.current);
-            nav('/result', { 
-                state: { 
-                    counts1: p1ScoreRef.current, score1: p1ScoreRef.current.score,
-                    counts2: p2ScoreRef.current, score2: p2ScoreRef.current.score,
-                }
-            });
-          }
+            p1: allNotes.filter(n => n.lane < 4),
+            p2: allNotes.filter(n => n.lane >= 4).map(n => ({ ...n, lane: n.lane - 4 })),
         });
 
-        // 音声の長さを検出して、その長さまでノーツを自動生成
-        soundRef.current.once('load', () => {
-          const audioDuration = soundRef.current.duration();
-          if (audioDuration && audioDuration > 0) {
-            const chartDuration = chartData.duration || 15;
-            const maxTime = Math.max(audioDuration, chartDuration);
-            
-            // 既存のノーツの最大時間を取得
-            const existingMaxTime = chartNotes.length > 0 
-              ? Math.max(...chartNotes.map(n => n.time))
-              : 0;
-            
-            // 音声の長さまでノーツが不足している場合、自動生成
-            if (existingMaxTime < maxTime) {
-              const additionalNotes = [];
-              const bpm = chartData.bpm || 120;
-              const beatInterval = 60 / bpm; // 1拍の間隔（秒）
-              
-              // 既存のノーツのパターンを分析して、そのパターンを繰り返す
-              const patternNotes = chartNotes.slice(0, 4); // 最初の4つのノーツをパターンとして使用
-              
-              if (patternNotes.length > 0) {
-                let currentTime = existingMaxTime + beatInterval;
-                while (currentTime <= maxTime) {
-                  patternNotes.forEach((patternNote, index) => {
-                    const newTime = currentTime + (index * beatInterval / 4);
-                    if (newTime <= maxTime) {
-                      additionalNotes.push({
-                        time: newTime,
-                        lane: patternNote.lane
-                      });
-                    }
-                  });
-                  currentTime += beatInterval;
+        const audioUrl = chartData.audio?.trim() || '/audio/Henceforth.mp3';
+        soundRef.current = new Howl({
+            src: [audioUrl],
+            html5: true,
+            onload: () => setLoading(false),
+            onerror: () => setError('音声の読み込みに失敗しました。'),
+            onend: () => {
+                if (!resultTimeoutRef.current) {
+                  resultTimeoutRef.current = setTimeout(() => {
+                    const resultData = {
+                      p1: p1ScoreRef.current,
+                      p2: p2ScoreRef.current,
+                    };
+                    nav('/result', { state: resultData });
+                  }, 500);
                 }
-              } else {
-                // パターンがない場合は、シンプルなパターンを生成
-                let currentTime = 1;
-                while (currentTime <= maxTime) {
-                  for (let lane = 0; lane < 4; lane++) {
-                    additionalNotes.push({
-                      time: currentTime + (lane * 0.25),
-                      lane: lane
-                    });
-                  }
-                  currentTime += 1;
-                }
-              }
-              
-              // 自動生成したノーツを追加
-              const allNotes = [...chartNotes, ...additionalNotes];
-              setNotes({
-                  p1: allNotes.map(n => ({...n, id: `p1-${n.time}-${n.lane}`, hit: false, missed: false })),
-                  p2: allNotes.map(n => ({...n, id: `p2-${n.time}-${n.lane}`, hit: false, missed: false }))
-              });
-              
-              console.log(`音声の長さ: ${audioDuration}秒, 自動生成したノーツ: ${additionalNotes.length}個`);
-            } else {
-              setNotes({
-                  p1: chartNotes.map(n => ({...n, id: `p1-${n.time}-${n.lane}`, hit: false, missed: false })),
-                  p2: chartNotes.map(n => ({...n, id: `p2-${n.time}-${n.lane}`, hit: false, missed: false }))
-              });
             }
-          } else {
-            setNotes({
-                p1: chartNotes.map(n => ({...n, id: `p1-${n.time}-${n.lane}`, hit: false, missed: false })),
-                p2: chartNotes.map(n => ({...n, id: `p2-${n.time}-${n.lane}`, hit: false, missed: false }))
-            });
-          }
         });
+
       } catch (e) {
-        setError(e.message);
+        setError('譜面データの取得に失敗しました。');
         setLoading(false);
       }
     };
