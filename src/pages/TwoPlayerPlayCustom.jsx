@@ -24,7 +24,7 @@ const ALL_VALID_KEYS = [
 ];
 
 export default function TwoPlayerPlayCustom() {
-  const { c1 } = useParams();
+  const { chartId, c1 } = useParams();
   const nav = useNavigate();
 
   const [notes, setNotes] = useState({ p1: [], p2: [] });
@@ -32,7 +32,9 @@ export default function TwoPlayerPlayCustom() {
 
   const p1ScoreRef = useRef({ perfect: 0, good: 0, miss: 0, score: 0 });
   const p2ScoreRef = useRef({ perfect: 0, good: 0, miss: 0, score: 0 });
-
+  const [p1Score, setP1Score] = useState({ perfect: 0, good: 0, miss: 0, score: 0 });
+  const [p2Score, setP2Score] = useState({ perfect: 0, good: 0, miss: 0, score: 0 });
+  
   const [started, setStarted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -55,13 +57,20 @@ export default function TwoPlayerPlayCustom() {
   useEffect(() => {
     const fetchChart = async () => {
       try {
-        const snap = await getDoc(doc(db, "charts", c1));
-        if (!snap.exists()) throw new Error("Chart not found.");
+        const chartIdToUse = chartId || c1; // 新しいルートと古いルートの両方に対応
+        if (!chartIdToUse) throw new Error('Chart ID is missing.');
+        
+        const snap = await getDoc(doc(db, 'charts', chartIdToUse));
+        if (!snap.exists()) throw new Error('Chart not found.');
 
         const chartData = snap.data();
-        const chartNotes = chartData.notes ?? [];
-
+        chartDataRef.current = chartData;
         setOffset(chartData.offset ?? 0);
+
+        const allNotes = (chartData.notes ?? [])
+            .sort((a, b) => a.time - b.time)
+            .map(n => ({ ...n, id: `${n.time}-${n.lane}`, hit: false, missed: false }));
+
         setNotes({
           p1: chartNotes.map((n) => ({
             ...n,
@@ -204,18 +213,20 @@ export default function TwoPlayerPlayCustom() {
           }
         });
       } catch (e) {
-        setError(e.message);
+        setError('譜面データの取得に失敗しました。');
         setLoading(false);
       }
     };
     p1ScoreRef.current = { perfect: 0, good: 0, miss: 0, score: 0 };
     p2ScoreRef.current = { perfect: 0, good: 0, miss: 0, score: 0 };
+    setP1Score({ perfect: 0, good: 0, miss: 0, score: 0 });
+    setP2Score({ perfect: 0, good: 0, miss: 0, score: 0 });
     fetchChart();
     return () => {
-      soundRef.current?.unload();
-      if (resultTimeoutRef.current) clearTimeout(resultTimeoutRef.current);
-    };
-  }, [c1, nav]);
+        soundRef.current?.unload();
+        if (resultTimeoutRef.current) clearTimeout(resultTimeoutRef.current);
+    }
+  }, [chartId, c1, nav]);
 
   const showJudgement1 = (text) => {
     if (timeoutRef1.current) clearTimeout(timeoutRef1.current);
@@ -249,6 +260,7 @@ export default function TwoPlayerPlayCustom() {
         showJudgement1("Miss");
         setJudgementColor1("text-blue-400");
         p1ScoreRef.current.score -= 2;
+        setP1Score({...p1ScoreRef.current});
         p1Changed = true;
         return { ...n, missed: true };
       }
@@ -262,6 +274,7 @@ export default function TwoPlayerPlayCustom() {
         showJudgement2("Miss");
         setJudgementColor2("text-blue-400");
         p2ScoreRef.current.score -= 2;
+        setP2Score({...p2ScoreRef.current});
         p2Changed = true;
         return { ...n, missed: true };
       }
@@ -281,6 +294,20 @@ export default function TwoPlayerPlayCustom() {
     const newTime = soundRef.current.seek();
     if (typeof newTime !== "number") return;
     setTime(newTime);
+    
+    // 可変長の譜面に対応した終了条件
+    if (chartDataRef.current && newTime >= (chartDataRef.current.duration || 15)) {
+      soundRef.current.stop();
+      if (resultTimeoutRef.current) clearTimeout(resultTimeoutRef.current);
+      nav('/result', { 
+        state: { 
+          counts1: p1ScoreRef.current, score1: p1ScoreRef.current.score,
+          counts2: p2ScoreRef.current, score2: p2ScoreRef.current.score,
+        }
+      });
+      return;
+    }
+    
     handleMisses();
   });
 
@@ -473,7 +500,9 @@ export default function TwoPlayerPlayCustom() {
       <div className="absolute left-4 bottom-4 text-xl">
         2P: {p2ScoreRef.current.score}
       </div>
-      <button
+      <div className="absolute left-4 top-4 text-xl">1P: {p1Score.score}</div>
+      <div className="absolute left-4 bottom-4 text-xl">2P: {p2Score.score}</div>
+       <button
         className="absolute right-4 top-4 px-4 py-2 bg-gray-600 text-white rounded z-30"
         onClick={() => nav(-1)}
       >

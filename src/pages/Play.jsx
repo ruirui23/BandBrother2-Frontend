@@ -87,6 +87,13 @@ export default function Play() {
   }, [difficulty, reset, nav, diffObj.notes]);
 
   useEffect(() => {
+    if (started && time >= 15) {
+      soundRef.current?.stop();
+      if(nav) nav('/result', { state: scoreRef.current });
+    }
+  }, [time, started, nav]);
+
+  useEffect(() => {
     if (!isSoundLoaded || !soundRef.current) return;
 
     const onFirstKey = (e) => {
@@ -225,14 +232,14 @@ export default function Play() {
         >
           {judgement}
         </div>
+      {/* スコア表示 */}
+      <div className="absolute left-4 top-16 text-xl text-white">
+        Score: {score}
+      </div>
 
-        {/* 4本の判定ライン */}
-        {LANE_Y_POSITIONS.map((y, index) => (
-          <div
-            key={index}
-            style={{ top: `calc(50% + ${y}px)` }}
-            className="absolute left-0 right-0 transform -translate-y-1/2"
-          >
+      {/* 4本の判定ライン */}
+      {LANE_Y_POSITIONS.map((y, index) => (
+         <div key={index} style={{ top: `calc(50% + ${y}px)`}} className="absolute left-0 right-0 transform -translate-y-1/2">
             <HitLine lane={index} />
           </div>
         ))}

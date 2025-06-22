@@ -81,7 +81,6 @@ export default function PlayCustom() {
             setTimeout(() => nav("/result", { state: scoreRef.current }), 500);
           },
         });
-
         // 音声の長さを検出して、その長さまでノーツを自動生成
         soundRef.current.once("load", () => {
           const audioDuration = soundRef.current.duration();
@@ -251,6 +250,13 @@ export default function PlayCustom() {
     return () => window.removeEventListener("keydown", onKey);
   }, [onKey]);
 
+  useEffect(() => {
+    if (started && chartDataRef.current && time >= (chartDataRef.current.duration || 15)) {
+      soundRef.current?.stop();
+      nav('/result', { state: scoreRef.current });
+    }
+  }, [time, started, nav]);
+
   const visibleNotes = notesRef.current.filter(
     (n) => !n.hit && !n.missed && Math.abs(n.time - time) < WINDOW_SEC
   );
@@ -301,6 +307,10 @@ export default function PlayCustom() {
             style={{ top: `calc(50% + ${y}px)` }}
             className="absolute left-0 right-0 transform -translate-y-1/2"
           >
+          {/* スコア表示 */}
+          <div className="absolute left-4 top-16 text-xl text-white">
+            Score: {score}
+          </div>
             <HitLine lane={index} />
           </div>
         ))}
