@@ -86,6 +86,7 @@ export default function ChartEditor() {
   const [uploadedAudioUrl, setUploadedAudioUrl] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
   const audioRef = useRef(null);
   const navigate = useNavigate();
 
@@ -300,19 +301,41 @@ export default function ChartEditor() {
   };
 
   const handlePlayPause = () => {
-    if (audioRef.current && !audioError) {
+    if (audioRef.current) {
       if (audioRef.current.paused) {
-        audioRef.current.play().catch(() => setAudioError(true));
+        audioRef.current.play().catch(e => {
+          console.error("Audio playback failed:", e);
+          setAudioError(true);
+        });
       } else {
         audioRef.current.pause();
       }
     }
   };
 
+  const handleSeek = (e) => {
+    const time = Number(e.target.value);
+    if (audioRef.current) {
+      audioRef.current.currentTime = time;
+      setCurrentTime(time);
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      setCurrentTime(audioRef.current.currentTime);
+    }
+  };
+
   return (
     <div className="bg-gray-900 min-h-screen text-white p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-4xl font-extrabold text-white mb-6 text-center tracking-wider">譜面作成</h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-4xl font-extrabold text-white tracking-wider">譜面作成</h1>
+          <button onClick={() => navigate('/')} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-bold transition">
+            ホームに戻る
+          </button>
+        </div>
         
         {isChartListVisible ? (
           <div className="fixed inset-0 bg-black/70 flex justify-center items-center z-50">
@@ -350,161 +373,96 @@ export default function ChartEditor() {
         <div className="flex flex-col md:flex-row gap-6 items-start">
           {/* 左側：操作パネル */}
           <div className="bg-gray-800 p-6 rounded-2xl shadow-lg w-full md:w-80 flex-shrink-0">
-            <div className="flex flex-wrap items-end gap-6 w-full justify-center mb-4">
-              <div className='flex gap-4'>
-                <button onClick={handleNewChart} className="px-4 py-2 bg-blue-500 text-white rounded self-end">新規作成</button>
-                <button onClick={() => setIsChartListVisible(true)} className="px-4 py-2 bg-purple-500 text-white rounded self-end">譜面を読み込む</button>
-              </div>
-              <div className="flex flex-col items-start">
-                <label className="text-white text-base mb-1" htmlFor="title-input">譜面タイトル</label>
-                <input
-                  id="title-input"
-                  className="border p-2 rounded w-48 text-lg bg-gray-300 text-black placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                  placeholder="譜面タイトル"
-                  value={title}
-                  onChange={e => setTitle(e.target.value)}
-                />
-              </div>
-              <div className="flex flex-col items-start">
-                <label className="text-white text-base mb-1" htmlFor="bpm-input">BPM</label>
-                <input
-                  id="bpm-input"
-                  className="border p-2 rounded w-24 text-lg bg-gray-300 text-black placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                  type="number"
-                  value={bpm}
-                  onChange={e => setBpm(Number(e.target.value))}
-                />
-              </div>
-              <div className="flex flex-col items-start">
-                <label className="text-white text-base mb-1" htmlFor="duration-input">長さ(秒)</label>
-                <input
-                  id="duration-input"
-                  className="border p-2 rounded w-24 text-lg bg-gray-300 text-black placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                  type="number"
-                  value={duration}
-                  onChange={e => setDuration(Number(e.target.value))}
-                />
-              </div>
-              <div className="flex flex-col items-start">
-                <label className="text-white text-base mb-1" htmlFor="music-select">BGM</label>
-                <div className="flex flex-col gap-2">
-                  <select
-                    id="music-select"
-                    className="border p-2 rounded w-48 text-lg bg-gray-300 text-black focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                    value={selectedSong}
-                    onChange={e => setSelectedSong(e.target.value)}
-                  >
-                    {LOCAL_SONGS.map(song => (
-                      <option key={song.url} value={song.url}>{song.title}</option>
-                    ))}
-                    {uploadedAudioUrl && (
-                      <option value={uploadedAudioUrl}>アップロードした音源</option>
-                    )}
-                  </select>
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="file"
-                        accept="audio/*"
-                        onChange={handleAudioUpload}
-                        className="text-xs text-white file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-blue-500 file:text-white hover:file:bg-blue-600"
-                        disabled={isUploading}
-                      />
-                      {isUploading && (
-                        <span className="text-xs text-yellow-400">アップロード中... {uploadProgress}%</span>
-                      )}
-                    </div>
-                    {isUploading && (
-                      <div className="w-48 bg-gray-600 rounded-full h-2">
-                        <div 
-                          className="bg-blue-500 h-2 rounded-full transition-all duration-300" 
-                          style={{ width: `${uploadProgress}%` }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <audio 
-                  ref={audioRef} 
-                  src={selectedSong || uploadedAudioUrl} 
-                  loop 
-                  className="hidden" 
-                  onError={handleAudioError}
-                  onLoadedMetadata={handleAudioLoadedMetadata}
-                />
-                {audioError && (
-                  <span className="text-xs text-red-400 mt-1">音声ファイル読み込みエラー</span>
-                )}
-              </div>
-              <div className="flex items-end ml-4">
-                <button
-                  onClick={handlePlayPause}
-                  className={`py-2 px-6 font-bold rounded-l-xl ${
-                    audioError 
-                      ? 'bg-gray-500 text-gray-300 cursor-not-allowed' 
-                      : 'bg-green-500 hover:bg-green-600 text-white'
-                  }`}
-                  disabled={audioError}
-                >
-                  再生/停止
-                </button>
-                <button
-                  className="py-2 px-8 bg-yellow-400 hover:bg-yellow-500 text-blue-700 font-bold rounded-r-xl shadow-lg transition text-lg"
-                  onClick={saveChart}
-                >
-                  {editingChartId ? '更新する' : '保存する'}
-                </button>
-              </div>
+            <div className="space-y-4">
+              <button onClick={handleNewChart} className="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg text-white font-bold transition">
+                新規作成
+              </button>
+              <button onClick={() => setIsChartListVisible(true)} className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-white font-bold transition">
+                譜面を読み込む
+              </button>
             </div>
+
             <hr className="my-6 border-gray-600" />
             
-            <h3 className="text-xl font-bold text-white mb-3">譜面情報</h3>
-            <input
-              type="text"
-              placeholder="譜面タイトル"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <div className="flex gap-2 mt-2">
+            <div className="space-y-4">
+              <h3 className="text-xl font-bold text-white">譜面情報</h3>
               <input
-                type="number"
-                placeholder="BPM"
-                value={bpm}
-                onChange={(e) => setBpm(Number(e.target.value) || 0)}
-                className="w-1/2 px-3 py-2 bg-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                type="text"
+                placeholder="譜面タイトル"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <input
-                type="number"
-                placeholder="長さ(秒)"
-                value={duration}
-                onChange={(e) => setDuration(Number(e.target.value) || 0)}
-                className="w-1/2 px-3 py-2 bg-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  placeholder="BPM"
+                  value={bpm}
+                  onChange={(e) => setBpm(Number(e.target.value) || 0)}
+                  className="w-1/2 px-3 py-2 bg-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <input
+                  type="number"
+                  placeholder="長さ(秒)"
+                  value={duration}
+                  onChange={(e) => setDuration(Number(e.target.value) || 0)}
+                  className="w-1/2 px-3 py-2 bg-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <button
+                onClick={syncDurationToAudio}
+                className="w-full px-4 py-2 bg-cyan-600 hover:bg-cyan-700 rounded-lg text-white font-bold transition text-sm"
+              >
+                音源の長さに同期
+              </button>
             </div>
-            <button
-              onClick={syncDurationToAudio}
-              className="w-full mt-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-700 rounded-lg text-white font-bold transition text-sm"
-            >
-              音源の長さに同期
+
+            <hr className="my-6 border-gray-600" />
+
+            <div className="space-y-4">
+              <h3 className="text-xl font-bold text-white">BGM</h3>
+              <select
+                value={selectedSong}
+                onChange={(e) => setSelectedSong(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {LOCAL_SONGS.map(song => <option key={song.url} value={song.url}>{song.title}</option>)}
+                {uploadedAudioUrl && <option value={uploadedAudioUrl}>アップロードした音源</option>}
+              </select>
+              <input type="file" accept="audio/*" onChange={handleAudioUpload} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700" />
+              {isUploading && <p className="text-sm text-yellow-400">アップロード中: {uploadProgress}%</p>}
+              {audioError && <p className="text-sm text-red-500">音源の読み込みに失敗しました</p>}
+            </div>
+
+            <hr className="my-6 border-gray-600" />
+
+            <button onClick={saveChart} className="w-full px-4 py-3 bg-yellow-500 hover:bg-yellow-600 rounded-lg text-gray-900 font-bold transition">
+              {editingChartId ? '譜面を更新する' : '譜面を保存する'}
             </button>
           </div>
 
-          <div className="w-full flex flex-col gap-2 items-center">
-            {LANE_COLORS.map((color, index) => (
-              <EditorLane 
-                key={index}
-                lane={index}
-                notes={notes}
-                onNotesChange={setNotes}
-                duration={duration}
-                gridWidth={GRID_WIDTH}
-                beatCount={beatCount}
-                gridStep={gridStep}
-                colorConfig={color}
-              />
-            ))}
-            <span className="text-xs text-gray-300 mt-2">各レーンをクリックしてノーツを追加/削除</span>
+          {/* 右側：エディターエリア */}
+          <div className="bg-gray-800 p-6 rounded-2xl shadow-lg flex-grow">
+            <div className="space-y-2">
+              {LANE_COLORS.map((color, index) => (
+                <EditorLane key={index} lane={index} notes={notes} onNotesChange={setNotes} duration={duration} gridWidth={GRID_WIDTH} beatCount={beatCount} gridStep={gridStep} colorConfig={color} />
+              ))}
+            </div>
+            <div className="mt-4">
+              <audio ref={audioRef} src={selectedSong} onLoadedMetadata={handleAudioLoadedMetadata} onError={handleAudioError} onTimeUpdate={handleTimeUpdate} />
+              <div className="flex items-center gap-4">
+                <button onClick={handlePlayPause} className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-white font-bold transition">再生/停止</button>
+                <input
+                  type="range"
+                  min="0"
+                  max={duration}
+                  value={currentTime}
+                  onChange={handleSeek}
+                  className="w-full"
+                />
+              </div>
+              <p className="text-center text-sm text-gray-400 mt-2">各レーンをクリックしてノーツを追加/削除</p>
+            </div>
           </div>
         </div>
         )}
