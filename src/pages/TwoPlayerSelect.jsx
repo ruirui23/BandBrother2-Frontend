@@ -148,12 +148,6 @@ export default function TwoPlayerSelect() {
       >
         ゲーム開始
       </button>
-      <button
-        className="mt-4 px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg text-white text-lg font-bold shadow-lg"
-        onClick={handleShowCustom}
-      >
-        オリジナル譜面
-      </button>
     </div>
   );
 }
