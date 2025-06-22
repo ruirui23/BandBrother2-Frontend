@@ -30,6 +30,9 @@ export default function TwoPlayerPlayCustom() {
   const p1ScoreRef = useRef({ perfect: 0, good: 0, miss: 0, score: 0 });
   const p2ScoreRef = useRef({ perfect: 0, good: 0, miss: 0, score: 0 });
   
+  const [p1Score, setP1Score] = useState({ perfect: 0, good: 0, miss: 0, score: 0 });
+  const [p2Score, setP2Score] = useState({ perfect: 0, good: 0, miss: 0, score: 0 });
+  
   const [started, setStarted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -57,8 +60,8 @@ export default function TwoPlayerPlayCustom() {
             .map(n => ({ ...n, id: `${n.time}-${n.lane}`, hit: false, missed: false }));
 
         setNotes({
-            p1: allNotes.filter(n => n.lane < 4),
-            p2: allNotes.filter(n => n.lane >= 4).map(n => ({ ...n, lane: n.lane - 4 })),
+            p1: allNotes.filter(n => n.lane < 4).map(n => ({ ...n, id: `p1-${n.time}-${n.lane}`, hit: false, missed: false })),
+            p2: allNotes.filter(n => n.lane < 4).map(n => ({ ...n, id: `p2-${n.time}-${n.lane}`, hit: false, missed: false }))
         });
 
         const audioUrl = chartData.audio?.trim() || '/audio/Henceforth.mp3';
@@ -71,8 +74,10 @@ export default function TwoPlayerPlayCustom() {
                 if (!resultTimeoutRef.current) {
                   resultTimeoutRef.current = setTimeout(() => {
                     const resultData = {
-                      p1: p1ScoreRef.current,
-                      p2: p2ScoreRef.current,
+                      counts1: p1ScoreRef.current,
+                      counts2: p2ScoreRef.current,
+                      score1: p1ScoreRef.current.score,
+                      score2: p2ScoreRef.current.score
                     };
                     nav('/result', { state: resultData });
                   }, 500);
@@ -86,6 +91,8 @@ export default function TwoPlayerPlayCustom() {
     };
     p1ScoreRef.current = { perfect: 0, good: 0, miss: 0, score: 0 };
     p2ScoreRef.current = { perfect: 0, good: 0, miss: 0, score: 0 };
+    setP1Score({ perfect: 0, good: 0, miss: 0, score: 0 });
+    setP2Score({ perfect: 0, good: 0, miss: 0, score: 0 });
     fetchChart();
     return () => {
         soundRef.current?.unload();
@@ -101,6 +108,7 @@ export default function TwoPlayerPlayCustom() {
       if (!n.hit && !n.missed && currentTime - (n.time - offset) > 0.2) {
         p1ScoreRef.current.miss++;
         p1ScoreRef.current.score -= 2;
+        setP1Score({...p1ScoreRef.current});
         p1Changed = true;
         return { ...n, missed: true };
       }
@@ -112,6 +120,7 @@ export default function TwoPlayerPlayCustom() {
       if (!n.hit && !n.missed && currentTime - (n.time - offset) > 0.2) {
         p2ScoreRef.current.miss++;
         p2ScoreRef.current.score -= 2;
+        setP2Score({...p2ScoreRef.current});
         p2Changed = true;
         return { ...n, missed: true };
       }
@@ -180,6 +189,12 @@ export default function TwoPlayerPlayCustom() {
       scoreRef.current.score += 2;
     }
     
+    if (isP1Key) {
+      setP1Score({...p1ScoreRef.current});
+    } else {
+      setP2Score({...p2ScoreRef.current});
+    }
+    
     setNotes(prev => ({
         ...prev,
         [player]: prev[player].map((n, idx) => idx === bestMatchIndex ? {...n, hit: true} : n)
@@ -242,8 +257,8 @@ export default function TwoPlayerPlayCustom() {
         })}
       </div>
       
-      <div className="absolute left-4 top-4 text-xl">1P: {p1ScoreRef.current.score}</div>
-      <div className="absolute left-4 bottom-4 text-xl">2P: {p2ScoreRef.current.score}</div>
+      <div className="absolute left-4 top-4 text-xl">1P: {p1Score.score}</div>
+      <div className="absolute left-4 bottom-4 text-xl">2P: {p2Score.score}</div>
        <button
         className="absolute right-4 top-4 px-4 py-2 bg-gray-600 text-white rounded z-30"
         onClick={() => nav(-1)}
