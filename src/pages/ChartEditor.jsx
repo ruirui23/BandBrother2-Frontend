@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db, storage } from '../firebase';
-import { collection, addDoc, doc, updateDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, getDocs, query, where, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const GRID_WIDTH_BASE = 1200; // 横長に拡大
@@ -17,62 +18,61 @@ const LOCAL_SONGS = [
 ];
 
 const LANE_COLORS = [
-  { name: 'Orange', bg: 'bg-orange-900/50', border: 'border-orange-400', note: 'bg-orange-300', noteBorder: 'border-orange-500' },
-  { name: 'Pink', bg: 'bg-pink-900/50', border: 'border-pink-400', note: 'bg-pink-300', noteBorder: 'border-pink-500' },
-  { name: 'Cyan', bg: 'bg-cyan-900/50', border: 'border-cyan-400', note: 'bg-cyan-300', noteBorder: 'border-cyan-500' },
-  { name: 'Green', bg: 'bg-green-900/50', border: 'border-green-400', note: 'bg-green-300', noteBorder: 'border-green-500' },
+  { bg: 'bg-orange-900/50', border: 'border-orange-400', note: 'bg-orange-300', noteBorder: 'border-orange-500' },
+  { bg: 'bg-pink-900/50', border: 'border-pink-400', note: 'bg-pink-300', noteBorder: 'border-pink-500' },
+  { bg: 'bg-cyan-900/50', border: 'border-cyan-400', note: 'bg-cyan-300', noteBorder: 'border-cyan-500' },
+  { bg: 'bg-green-900/50', border: 'border-green-400', note: 'bg-green-300', noteBorder: 'border-green-500' },
 ];
 
-const EditorLane = React.memo(React.forwardRef(({ lane, notes, onNotesChange, duration, gridWidth, beatCount, gridStep, colorConfig }, ref) => {
-  const getX = (time) => (time / duration) * gridWidth;
+const EditorLane = React.memo(React.forwardRef(
+  ({ lane, notes, onNotesChange, duration, gridWidth, beatCount, gridStep, colorConfig }, ref) => {
+    const getX = (time) => (time / duration) * gridWidth;
 
-  const handleGridClick = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const time = duration * (x / gridWidth);
+    const handleGridClick = (e) => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const time = duration * (x / gridWidth);
 
-    const proximityThreshold = duration * (NOTE_RADIUS * 2 / gridWidth);
-    const foundIndex = notes.findIndex(n => n.lane === lane && Math.abs(n.time - time) < proximityThreshold);
+      const proximityThreshold = duration * (NOTE_RADIUS * 2 / gridWidth);
+      const foundIndex = notes.findIndex(n => n.lane === lane && Math.abs(n.time - time) < proximityThreshold);
 
-    if (foundIndex !== -1) {
-      onNotesChange(notes.filter((_, i) => i !== foundIndex));
-    } else {
-      onNotesChange([...notes, { time, lane, type: 'tap' }].sort((a,b) => a.time - b.time));
-    }
-  };
-
-  return (
-    <div ref={ref} className={`w-full h-24 ${colorConfig.bg} rounded-xl border-2 ${colorConfig.border} shadow-inner flex items-center justify-center relative overflow-x-auto`} style={{ minWidth: 800, maxWidth: 1400 }}>
-      <div
-        className="absolute inset-0 cursor-pointer"
-        style={{ width: gridWidth, height: '100%' }}
-        onClick={handleGridClick}
+      if (foundIndex !== -1) {
+        onNotesChange(notes.filter((_, i) => i !== foundIndex));
+      } else {
+        onNotesChange([...notes, { time, lane, type: 'tap' }].sort((a,b) => a.time - b.time));
+      }
+    };
+    
+    return (
+      <div 
+        ref={ref} 
+        className={`w-full h-24 ${colorConfig.bg} rounded-xl border-2 ${colorConfig.border} shadow-inner flex items-center relative overflow-x-auto`}
+        style={{ minWidth: 800, maxWidth: 1400 }}
       >
-        {Array.from({ length: beatCount + 1 }).map((_, i) => (
-          <div
-            key={i}
-            className="absolute top-0 bottom-0 w-px bg-white/20"
-            style={{ left: i * gridStep }}
-          />
-        ))}
-        {notes.filter(n => n.lane === lane).map((n, i) => (
-          <div
-            key={i}
-            className={`absolute rounded-full ${colorConfig.note} ${colorConfig.noteBorder} border-2 shadow-lg`}
-            style={{
-              left: getX(n.time) - NOTE_RADIUS,
-              top: '50%' ,
-              transform: 'translateY(-50%)',
-              width: NOTE_RADIUS * 2,
-              height: NOTE_RADIUS * 2,
-              zIndex: 20,
-            }}
-          />
-        ))}
+        <div
+          className="absolute inset-0 cursor-pointer"
+          style={{ width: gridWidth, height: '100%' }}
+          onClick={handleGridClick}
+        >
+          {Array.from({ length: beatCount + 1 }).map((_, i) => (
+            <div key={i} className="absolute top-0 bottom-0 w-px bg-white/20" style={{ left: i * gridStep }} />
+          ))}
+          {notes.filter(n => n.lane === lane).map((n, i) => (
+            <div
+              key={i}
+              className={`absolute rounded-full ${colorConfig.note} ${colorConfig.noteBorder} border-2 shadow-lg`}
+              style={{
+                left: getX(n.time) - NOTE_RADIUS,
+                top: '50%', transform: 'translateY(-50%)',
+                width: NOTE_RADIUS * 2, height: NOTE_RADIUS * 2, zIndex: 20
+              }}
+            />
+          ))}
+        </div>
       </div>
-    </div>
-  );
-}));
+    );
+  }
+));
 
 export default function ChartEditor() {
   const [title, setTitle] = useState('');
@@ -85,181 +85,138 @@ export default function ChartEditor() {
   const [uploadedAudioUrl, setUploadedAudioUrl] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const audioRef = useRef(null);
-  const laneRefs = useRef([]);
-  const navigate = useNavigate();
-
+  
   const [editingChartId, setEditingChartId] = useState(null);
   const [userCharts, setUserCharts] = useState([]);
   const [allCharts, setAllCharts] = useState([]);
   const [isChartListVisible, setIsChartListVisible] = useState(false);
   const [showAllCharts, setShowAllCharts] = useState(false);
+  
+  const [currentTime, setCurrentTime] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const audioRef = useRef(null);
+  const laneRefs = useRef([]);
+  const navigate = useNavigate();
+  const [currentUser, setCurrentUser] = useState(auth.currentUser);
+
+  const beatCount = Math.floor((bpm / 60) * duration);
+  const GRID_WIDTH = Math.max(GRID_WIDTH_BASE, beatCount * 40);
+  const gridStep = GRID_WIDTH / beatCount;
 
   useEffect(() => {
-    const fetchCharts = async () => {
-      try {
-        // 全ての譜面を取得
-        const allChartsQuery = query(collection(db, 'charts'));
-        const allChartsSnapshot = await getDocs(allChartsQuery);
-        const allChartsData = allChartsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setAllCharts(allChartsData);
+    const unsubscribe = onAuthStateChanged(auth, user => {
+      setCurrentUser(user);
+    });
+    return () => unsubscribe();
+  }, []);
 
-        // ユーザーの譜面のみを取得（認証済みの場合）
-        if (auth.currentUser) {
-          const userChartsQuery = query(collection(db, 'charts'), where('createdBy', '==', auth.currentUser.uid));
-          const userChartsSnapshot = await getDocs(userChartsQuery);
-          const userChartsData = userChartsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setUserCharts(userChartsData);
-        }
-      } catch (error) {
-        console.error('譜面の取得に失敗しました:', error);
+  const fetchCharts = useCallback(async () => {
+    try {
+      const allChartsQuery = query(collection(db, 'charts'));
+      const allChartsSnapshot = await getDocs(allChartsQuery);
+      setAllCharts(allChartsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+      if (currentUser) {
+        const userChartsQuery = query(collection(db, 'charts'), where('createdBy', '==', currentUser.uid));
+        const userChartsSnapshot = await getDocs(userChartsQuery);
+        setUserCharts(userChartsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      } else {
+        setUserCharts([]);
       }
-    };
-    
+    } catch (error) {
+      console.error('譜面の取得に失敗しました:', error);
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
     fetchCharts();
-  }, [auth.currentUser]);
+  }, [fetchCharts]);
 
   const loadChart = (chart) => {
     setTitle(chart.title);
     setBpm(chart.bpm);
     setDuration(chart.duration || 15);
     setNotes(chart.notes || []);
-    setSelectedSong(chart.audio);
+    const songUrl = chart.audio || LOCAL_SONGS[0].url;
+    setSelectedSong(songUrl);
+    if(chart.audioType === 'uploaded') {
+      setUploadedAudioUrl(songUrl);
+    }
     setEditingChartId(chart.id);
     setIsChartListVisible(false);
+    setCurrentTime(0);
   };
-
+  
   const handleNewChart = () => {
     setTitle('');
     setBpm(120);
-    setDuration(15);
     setNotes([]);
     setSelectedSong(LOCAL_SONGS[0].url);
     setEditingChartId(null);
-  };
-
-  const refreshCharts = async () => {
-    try {
-      // 全ての譜面を取得
-      const allChartsQuery = query(collection(db, 'charts'));
-      const allChartsSnapshot = await getDocs(allChartsQuery);
-      const allChartsData = allChartsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setAllCharts(allChartsData);
-
-      // ユーザーの譜面のみを取得（認証済みの場合）
-      if (auth.currentUser) {
-        const userChartsQuery = query(collection(db, 'charts'), where('createdBy', '==', auth.currentUser.uid));
-        const userChartsSnapshot = await getDocs(userChartsQuery);
-        const userChartsData = userChartsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setUserCharts(userChartsData);
-      }
-      
-      alert('譜面一覧を更新しました！');
-    } catch (error) {
-      console.error('譜面の更新に失敗しました:', error);
-      alert('譜面一覧の更新に失敗しました。');
+    setCustomAudioFile(null);
+    setUploadedAudioUrl('');
+    if (audioRef.current) {
+        const defaultDuration = 30; // 仮のデフォルト値
+        setDuration(defaultDuration);
     }
   };
 
-  // 音声ファイル変更時の処理
+  const handleSyncDuration = () => {
+    if (audioRef.current && audioRef.current.duration) {
+      setDuration(audioRef.current.duration);
+    } else {
+      alert("音源が読み込めていません。");
+    }
+  };
+
+  const deleteChart = async (chartIdToDelete) => {
+    if(!window.confirm("本当にこの譜面を削除しますか？この操作は元に戻せません。")) return;
+    try {
+      await deleteDoc(doc(db, 'charts', chartIdToDelete));
+      alert('譜面を削除しました。');
+      fetchCharts(); // 譜面リストを更新
+    } catch (error) {
+      console.error('譜面の削除に失敗:', error);
+      alert('譜面の削除に失敗しました。');
+    }
+  };
+  
   useEffect(() => {
     if (audioRef.current) {
-      audioRef.current.load(); // 新しい音声ファイルを読み込み
+      audioRef.current.load();
       setAudioError(false);
     }
-  }, [selectedSong, uploadedAudioUrl]);
+  }, [selectedSong]);
 
-  // カスタム音声ファイルのアップロード処理
   const handleAudioUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
-    
-    if (!file.type.startsWith('audio/')) {
-      alert('音声ファイルを選択してください');
-      return;
-    }
-    
-    // ファイルサイズチェック (50MB制限)
-    const maxSize = 50 * 1024 * 1024; // 50MB
-    if (file.size > maxSize) {
-      alert('ファイルサイズが大きすぎます。50MB以下のファイルを選択してください。');
-      return;
-    }
-    
-    // 認証状態チェック
-    if (!auth.currentUser) {
-      alert('Firebase Storageにアップロードするには認証が必要です。ログインしてください。');
-      return;
-    }
-    
+    if (!file.type.startsWith('audio/')) { alert('音声ファイルを選択してください'); return; }
+    if (file.size > 50 * 1024 * 1024) { alert('ファイルサイズが大きすぎます。50MB以下のファイルを選択してください。'); return; }
+    if (!currentUser) { alert('アップロードにはログインが必要です。'); return; }
+
     setIsUploading(true);
     setUploadProgress(0);
     setCustomAudioFile(file);
-    
+
     try {
-      // Firebase Storageに直接アップロード（シンプル版）
       const fileName = `${Date.now()}_${file.name}`;
       const storageRef = ref(storage, `music/${fileName}`);
-      
-      console.log('アップロード開始:', fileName);
-      console.log('認証状態:', auth.currentUser ? 'ログイン済み' : '未ログイン');
-      console.log('ストレージ参照:', storageRef);
-      
-      // まずシンプルなuploadBytesを試す
-      setUploadProgress(50); // 中間表示
-      const snapshot = await uploadBytes(storageRef, file);
-      console.log('アップロード完了:', snapshot);
-      
-      setUploadProgress(75); // 進行状況更新
-      
-      // ダウンロードURL取得
+      await uploadBytes(storageRef, file);
       const downloadURL = await getDownloadURL(storageRef);
-      console.log('ダウンロードURL取得成功:', downloadURL);
-      
       setUploadedAudioUrl(downloadURL);
       setSelectedSong(downloadURL);
-      setIsUploading(false);
-      setUploadProgress(0);
-      
       alert('音声ファイルのアップロードが完了しました！');
-      
     } catch (error) {
       console.error('アップロードエラー:', error);
-      console.error('エラーコード:', error.code);
-      console.error('エラーメッセージ:', error.message);
-      
+      alert(`アップロードに失敗しました: ${error.message}`);
+    } finally {
       setIsUploading(false);
-      setUploadProgress(0);
-      
-      switch (error.code) {
-        case 'storage/unauthorized':
-          alert('Firebase Storageへのアクセス権限がありません。\nFirebase ConsoleでStorage Rulesを確認してください。');
-          break;
-        case 'storage/canceled':
-          alert('アップロードがキャンセルされました。');
-          break;
-        case 'storage/unknown':
-          alert('不明なエラーが発生しました。Firebase Storageの設定を確認してください。');
-          break;
-        case 'storage/retry-limit-exceeded':
-          alert('アップロードのリトライ回数上限に達しました。\nネットワーク接続を確認してください。');
-          break;
-        default:
-          alert(`アップロードに失敗しました\nエラーコード: ${error.code}\nメッセージ: ${error.message}`);
-      }
     }
   };
-
-  // 音声エラーハンドリング
-  const handleAudioError = () => {
-    setAudioError(true);
-    console.error('音声ファイルの読み込みに失敗しました:', selectedSong);
-  };
-
-  // BPMに応じてボード長さを調整
-  const beatCount = Math.floor((bpm / 60) * duration);
-  const GRID_WIDTH = Math.max(GRID_WIDTH_BASE, beatCount * 40); // 1拍40pxで伸縮
-  const gridStep = GRID_WIDTH / beatCount;
+  
+  const handleAudioError = () => { setAudioError(true); console.error('音声ファイルの読み込みに失敗:', selectedSong); };
 
   const updateScrollPosition = useCallback((time) => {
     if (laneRefs.current.length > 0 && laneRefs.current[0]) {
@@ -267,63 +224,40 @@ export default function ChartEditor() {
       if (!firstLane) return;
       const visibleWidth = firstLane.clientWidth;
       const targetScrollLeft = (time / duration) * GRID_WIDTH - (visibleWidth / 2);
-      
       laneRefs.current.forEach(lane => {
-        if (lane) {
-          lane.scrollLeft = targetScrollLeft;
-        }
+        if (lane) lane.scrollLeft = targetScrollLeft;
       });
     }
   }, [duration, GRID_WIDTH]);
 
   const saveChart = async () => {
-    if (!title || !selectedSong) {
-      alert('タイトルと音源は必須です');
-      return;
-    }
-    
-    // 音源URLの妥当性チェック
-    if (!selectedSong.startsWith('http') && !selectedSong.startsWith('/')) {
-      alert('無効な音源URLです。音源を再選択してください。');
-      return;
-    }
-    
-    if(notes.length === 0){
-      if(!confirm('ノーツがありませんが保存しますか？')) return;
-    }
+    if (!title) { alert('タイトルは必須です'); return; }
+    if (notes.length === 0 && !confirm('ノーツがありませんが保存しますか？')) return;
 
-    // 音源の種類を判定
-    const isUploadedAudio = selectedSong === uploadedAudioUrl && uploadedAudioUrl;
-    const isLocalAudio = LOCAL_SONGS.find(song => song.url === selectedSong);
-    
     const chartData = {
       title,
-      audio: selectedSong, // Firebase Storage URL または ローカルファイルURL
-      audioType: isUploadedAudio ? 'uploaded' : 'local', // 音源の種類
-      audioTitle: isUploadedAudio ? 
-        (customAudioFile ? customAudioFile.name : 'アップロードした音源') : 
-        (isLocalAudio ? isLocalAudio.title : '不明な音源'),
+      audio: selectedSong,
+      audioType: uploadedAudioUrl === selectedSong ? 'uploaded' : 'local',
+      audioTitle: customAudioFile?.name || LOCAL_SONGS.find(s => s.url === selectedSong)?.title || '音源',
       bpm: Number(bpm),
       duration: Number(duration),
-      offset: 0,
       notes: notes,
-      createdBy: auth.currentUser?.uid || 'unknown',
+      createdBy: currentUser?.uid || 'unknown',
+      updatedAt: serverTimestamp(),
     };
 
     try {
-      console.log('保存する譜面データ:', chartData);
-      
       if (editingChartId) {
-        const chartRef = doc(db, 'charts', editingChartId);
-        await updateDoc(chartRef, { ...chartData, updatedAt: serverTimestamp() });
-        alert(`譜面「${title}」を更新しました！\n音源: ${chartData.audioTitle}`);
+        await updateDoc(doc(db, 'charts', editingChartId), chartData);
+        alert('譜面を更新しました！');
       } else {
-        await addDoc(collection(db, 'charts'), { ...chartData, createdAt: serverTimestamp() });
-        alert(`譜面「${title}」を保存しました！\n音源: ${chartData.audioTitle}`);
+        const docRef = await addDoc(collection(db, 'charts'), { ...chartData, createdAt: serverTimestamp() });
+        setEditingChartId(docRef.id);
+        alert('譜面を保存しました！');
       }
-      navigate('/');
+      fetchCharts();
     } catch (e) {
-      console.error('保存に失敗しました: ', e);
+      console.error('保存に失敗しました:', e);
       alert('保存に失敗しました。');
     }
   };
@@ -338,225 +272,132 @@ export default function ChartEditor() {
     }
   };
 
-
-
-  const handleTimeUpdate = () => {
+  const handleSeek = (e) => {
+    const time = Number(e.target.value);
     if (audioRef.current) {
-      const newTime = audioRef.current.currentTime;
-      setCurrentTime(newTime);
-      updateScrollPosition(newTime); // 再生中もスクロールを更新
+      audioRef.current.currentTime = time;
+      setCurrentTime(time);
+      updateScrollPosition(time);
     }
   };
 
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      setCurrentTime(audioRef.current.currentTime);
+      updateScrollPosition(audioRef.current.currentTime);
+    }
+  };
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      const updatePlayingStatus = () => setIsPlaying(!audio.paused);
+      audio.addEventListener('play', updatePlayingStatus);
+      audio.addEventListener('pause', updatePlayingStatus);
+      audio.addEventListener('timeupdate', handleTimeUpdate);
+      return () => {
+        audio.removeEventListener('play', updatePlayingStatus);
+        audio.removeEventListener('pause', updatePlayingStatus);
+        audio.removeEventListener('timeupdate', handleTimeUpdate);
+      };
+    }
+  }, [selectedSong, updateScrollPosition]);
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-black via-gray-900 to-blue-900 gap-6">
-      <button
-        className="absolute left-4 top-4 px-4 py-2 bg-gray-600 text-white rounded z-30"
-        onClick={() => navigate(-1)}
-      >戻る</button>
-      <h2 className="text-3xl font-bold mb-6 text-white drop-shadow">譜面作成</h2>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-black via-gray-900 to-blue-900 text-white p-4">
+      <button onClick={() => navigate(-1)} className="absolute left-4 top-4 px-4 py-2 bg-gray-600 text-white rounded z-30">戻る</button>
+      <h2 className="text-4xl font-bold my-6 drop-shadow">譜面作成</h2>
       
       {isChartListVisible ? (
-        <div className="bg-white/10 rounded-2xl shadow-2xl p-8 w-full max-w-4xl">
+        <div className="bg-white/10 rounded-2xl shadow-2xl p-6 w-full max-w-4xl">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl text-white">編集する譜面を選択</h3>
+            <h3 className="text-xl">譜面一覧</h3>
             <div className="flex gap-2">
-              <button 
-                onClick={() => setShowAllCharts(false)}
-                className={`px-3 py-1 rounded text-sm ${!showAllCharts ? 'bg-blue-500 text-white' : 'bg-gray-600 text-gray-300'}`}
-              >
-                自分の譜面
-              </button>
-              <button 
-                onClick={() => setShowAllCharts(true)}
-                className={`px-3 py-1 rounded text-sm ${showAllCharts ? 'bg-blue-500 text-white' : 'bg-gray-600 text-gray-300'}`}
-              >
-                全ての譜面
-              </button>
+              <button onClick={() => setShowAllCharts(false)} className={`px-3 py-1 rounded text-sm ${!showAllCharts ? 'bg-blue-500' : 'bg-gray-600'}`}>自分の譜面</button>
+              <button onClick={() => setShowAllCharts(true)} className={`px-3 py-1 rounded text-sm ${showAllCharts ? 'bg-blue-500' : 'bg-gray-600'}`}>全ての譜面</button>
             </div>
           </div>
-          <div className="max-h-96 overflow-y-auto">
+          <div className="max-h-96 overflow-y-auto space-y-2">
             {(showAllCharts ? allCharts : userCharts).map(chart => (
-              <div key={chart.id} className="bg-gray-200 hover:bg-gray-300 rounded mb-2 p-3">
-                <button 
-                  onClick={() => loadChart(chart)} 
-                  className="w-full text-left text-black"
-                >
+              <div key={chart.id} className="bg-gray-800/50 hover:bg-gray-700/50 rounded p-3 flex justify-between items-center">
+                <button onClick={() => loadChart(chart)} className="text-left flex-grow">
                   <div className="font-medium">{chart.title}</div>
-                  <div className="text-sm text-gray-600">
-                    BPM: {chart.bpm} | 長さ: {chart.duration}秒 | 
-                    音源: {chart.audioTitle || '不明'} | 
-                    作成者: {chart.createdBy === auth.currentUser?.uid ? '自分' : chart.createdBy || '不明'}
-                  </div>
+                  <div className="text-sm text-gray-400">BPM: {chart.bpm} | 長さ: {Math.round(chart.duration)}秒 | 音源: {chart.audioTitle}</div>
                 </button>
+                {chart.createdBy === currentUser?.uid && (
+                   <button onClick={() => deleteChart(chart.id)} className="ml-4 px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded">削除</button>
+                )}
               </div>
             ))}
-            {(showAllCharts ? allCharts : userCharts).length === 0 && (
-              <div className="text-center text-gray-400 py-4">
-                {showAllCharts ? '譜面がありません' : 'あなたの譜面がありません'}
-              </div>
-            )}
           </div>
           <div className="flex gap-2 mt-4">
-            <button onClick={refreshCharts} className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded">
-              更新
-            </button>
-            <button onClick={() => setIsChartListVisible(false)} className="px-4 py-2 bg-gray-600 text-white rounded">
-              キャンセル
-            </button>
+            <button onClick={fetchCharts} className="px-4 py-2 bg-green-500 hover:bg-green-600 rounded">更新</button>
+            <button onClick={() => setIsChartListVisible(false)} className="px-4 py-2 bg-gray-600 rounded">閉じる</button>
           </div>
         </div>
       ) : (
-      <div className="bg-white/10 rounded-2xl shadow-2xl p-8 w-full max-w-4xl flex flex-col items-center gap-6">
-        {/* 上部コントロールを横並びで中央配置 */}
-        <div className="flex flex-wrap items-end gap-6 w-full justify-center mb-4">
-          <div className='flex gap-4'>
-            <button onClick={handleNewChart} className="px-4 py-2 bg-blue-500 text-white rounded self-end">新規作成</button>
-            <button onClick={() => setIsChartListVisible(true)} className="px-4 py-2 bg-purple-500 text-white rounded self-end">譜面を読み込む</button>
-          </div>
-          <div className="flex flex-col items-start">
-            <label className="text-white text-base mb-1" htmlFor="title-input">譜面タイトル</label>
-            <input
-              id="title-input"
-              className="border p-2 rounded w-48 text-lg bg-gray-300 text-black placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-              placeholder="譜面タイトル"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-            />
-          </div>
-          <div className="flex flex-col items-start">
-            <label className="text-white text-base mb-1" htmlFor="bpm-input">BPM</label>
-            <input
-              id="bpm-input"
-              className="border p-2 rounded w-24 text-lg bg-gray-300 text-black placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-              type="number"
-              value={bpm}
-              onChange={e => setBpm(Number(e.target.value))}
-            />
-          </div>
-          <div className="flex flex-col items-start">
-            <label className="text-white text-base mb-1" htmlFor="duration-input">長さ(秒)</label>
-            <input
-              id="duration-input"
-              className="border p-2 rounded w-24 text-lg bg-gray-300 text-black placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-              type="number"
-              value={duration}
-              onChange={e => setDuration(Number(e.target.value))}
-            />
-          </div>
-          <div className="flex flex-col items-start">
-            <label className="text-white text-base mb-1" htmlFor="music-select">BGM</label>
-            <div className="flex flex-col gap-2">
-              <select
-                id="music-select"
-                className="border p-2 rounded w-48 text-lg bg-gray-300 text-black focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                value={selectedSong}
-                onChange={e => setSelectedSong(e.target.value)}
-              >
-                {LOCAL_SONGS.map(song => (
-                  <option key={song.url} value={song.url}>{song.title}</option>
-                ))}
-                {uploadedAudioUrl && (
-                  <option value={uploadedAudioUrl}>アップロードした音源</option>
-                )}
-              </select>
-/* --- Upload Area --- */
-<div className="flex flex-col gap-2">
-  {/* ファイル選択 + テキスト進捗 */}
-  <div className="flex items-center gap-2">
-    <input
-      type="file"
-      accept="audio/*"
-      onChange={handleAudioUpload}
-      /*  全幅・大きめデザイン（ruirui_game）＋アップロード中は無効化（develop） */
-      className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg
-                 file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white
-                 hover:file:bg-blue-700 disabled:opacity-50"
-      disabled={isUploading}
-    />
-    {isUploading && (
-      /* ✔️  develop のテキスト進捗 */
-      <span className="text-sm text-yellow-400">
-        アップロード中… {uploadProgress}%
-      </span>
-    )}
-  </div>
-
-  {/* ✔️  develop のプログレスバー */}
-  {isUploading && (
-    <div className="w-full bg-gray-600 rounded-full h-2">
-      <div
-        className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-        style={{ width: `${uploadProgress}%` }}
-      />
-    </div>
-  )}
-
-  {/* ✔️  ruirui_game のエラーメッセージ */}
-  {audioError && (
-    <p className="text-sm text-red-500">音源の読み込みに失敗しました</p>
-  )}
-</div>
-
-<hr className="my-6 border-gray-600" />
-
-<button
-  onClick={saveChart}
-  className="w-full px-4 py-3 bg-yellow-500 hover:bg-yellow-600 rounded-lg
-             text-gray-900 font-bold transition"
->
-  {editingChartId ? '譜面を更新する' : '譜面を保存する'}
-</button>
-
+      <div className="w-full max-w-7xl flex flex-col lg:flex-row gap-6">
+        {/* Left Panel */}
+        <div className="bg-white/10 rounded-2xl shadow-2xl p-6 flex flex-col gap-4 lg:w-1/3">
+            <div className="flex gap-2">
+              <button onClick={handleNewChart} className="flex-1 px-4 py-2 bg-blue-500 rounded">新規作成</button>
+              <button onClick={() => setIsChartListVisible(true)} className="flex-1 px-4 py-2 bg-purple-500 rounded">譜面一覧</button>
+            </div>
+            <div>
+              <label className="text-sm">譜面タイトル</label>
+              <input value={title} onChange={e => setTitle(e.target.value)} className="w-full p-2 mt-1 rounded bg-gray-700 focus:ring-2 focus:ring-yellow-400" />
+            </div>
+            <div className="flex gap-4">
+              <div>
+                <label className="text-sm">BPM</label>
+                <input type="number" value={bpm} onChange={e => setBpm(Number(e.target.value))} className="w-full p-2 mt-1 rounded bg-gray-700" />
+              </div>
+              <div>
+                <label className="text-sm">長さ(秒)</label>
+                <input type="number" value={duration} onChange={e => setDuration(Number(e.target.value))} className="w-full p-2 mt-1 rounded bg-gray-700" />
               </div>
             </div>
-            <audio 
-              ref={audioRef} 
-              src={selectedSong || uploadedAudioUrl} 
-              loop 
-              className="hidden" 
-              onError={handleAudioError}
-            />
-            {audioError && (
-              <span className="text-xs text-red-400 mt-1">音声ファイル読み込みエラー</span>
-            )}
-          </div>
-          {/* ボタンをグループ化 */}
-          <div className="flex items-end ml-4">
-            <button
-              onClick={handlePlayPause}
-              className={`py-2 px-6 font-bold rounded-l-xl ${
-                audioError 
-                  ? 'bg-gray-500 text-gray-300 cursor-not-allowed' 
-                  : 'bg-green-500 hover:bg-green-600 text-white'
-              }`}
-              disabled={audioError}
-            >
-              再生/停止
+            
+            <div>
+              <label className="text-sm">BGM</label>
+              <select value={selectedSong} onChange={e => setSelectedSong(e.target.value)} className="w-full p-2 mt-1 rounded bg-gray-700">
+                {LOCAL_SONGS.map(s => <option key={s.url} value={s.url}>{s.title}</option>)}
+                {uploadedAudioUrl && <option value={uploadedAudioUrl}>アップロードした音源</option>}
+              </select>
+            </div>
+            <div className="flex flex-col gap-2">
+                <label className="text-sm">カスタムBGM</label>
+                <input type="file" accept="audio/*" onChange={handleAudioUpload} className="text-sm file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-blue-600 hover:file:bg-blue-700" disabled={isUploading} />
+                {isUploading && <div className="text-sm text-yellow-400">アップロード中...</div>}
+            </div>
+
+            <button onClick={handleSyncDuration} className="px-4 py-2 bg-indigo-500 rounded">音源の長さに同期</button>
+            
+            <audio ref={audioRef} src={selectedSong} onError={handleAudioError} onLoadedMetadata={handleSyncDuration} />
+            {audioError && <p className="text-sm text-red-500">音源読み込みエラー</p>}
+            
+            <div className="flex items-center gap-2">
+                <button onClick={handlePlayPause} className="px-4 py-2 bg-green-600 rounded">{isPlaying ? '停止' : '再生'}</button>
+                <input type="range" min="0" max={duration} value={currentTime} onChange={handleSeek} className="w-full" />
+                <span className="text-sm w-24 text-right">{currentTime.toFixed(2)}s / {duration.toFixed(2)}s</span>
+            </div>
+
+            <button onClick={saveChart} className="w-full px-4 py-3 bg-yellow-500 hover:bg-yellow-600 rounded text-gray-900 font-bold">
+              {editingChartId ? '譜面を更新' : '譜面を保存'}
             </button>
-            <button
-              className="py-2 px-8 bg-yellow-400 hover:bg-yellow-500 text-blue-700 font-bold rounded-r-xl shadow-lg transition text-lg"
-              onClick={saveChart}
-            >
-              {editingChartId ? '更新する' : '保存する'}
-            </button>
-          </div>
         </div>
-        <div className="w-full flex flex-col gap-2 items-center">
+
+        {/* Right Panel (Editor Lanes) */}
+        <div className="flex-grow flex flex-col gap-2 items-center">
           {LANE_COLORS.map((color, index) => (
             <EditorLane 
-              key={index}
-              lane={index}
-              notes={notes}
-              onNotesChange={setNotes}
-              duration={duration}
-              gridWidth={GRID_WIDTH}
-              beatCount={beatCount}
-              gridStep={gridStep}
+              ref={el => laneRefs.current[index] = el}
+              key={index} lane={index} notes={notes} onNotesChange={setNotes}
+              duration={duration} gridWidth={GRID_WIDTH} beatCount={beatCount} gridStep={gridStep}
               colorConfig={color}
             />
           ))}
-          <span className="text-xs text-gray-300 mt-2">各レーンをクリックしてノーツを追加/削除</span>
+          <span className="text-xs text-gray-400 mt-2">各レーンをクリックしてノーツを追加/削除</span>
         </div>
       </div>
       )}
