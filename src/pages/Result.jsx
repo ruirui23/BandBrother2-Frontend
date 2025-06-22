@@ -72,15 +72,15 @@ export default function Result() {
               <div className="text-center mt-8">
                 <div className="text-6xl font-bold text-yellow-400">{opponentScore.toLocaleString()}</div>
                 <div className="text-lg text-gray-300">SCORE</div>
-              </div>
-            </div>
+        </div>
           </div>
-          <Link
-            to="/"
+        </div>
+        <Link
+          to="/"
             className="mt-8 px-6 py-3 bg-blue-500 rounded-lg text-white hover:bg-blue-600 transition-colors"
-          >
-            ホームに戻る
-          </Link>
+        >
+          ホームに戻る
+        </Link>
         </div>
       </div>
     );
@@ -172,16 +172,16 @@ export default function Result() {
               <div className="text-center">
                 <div className="text-xl font-bold text-purple-400">{accuracy2}%</div>
                 <div className="text-sm text-gray-400">Accuracy</div>
-              </div>
+          </div>
             </div>
           </div>
 
-          <Link
-            to="/"
+        <Link
+          to="/"
             className="mt-8 px-6 py-3 bg-blue-500 rounded-lg text-white hover:bg-blue-600 transition-colors"
-          >
-            ホームに戻る
-          </Link>
+        >
+          ホームに戻る
+        </Link>
         </div>
       </div>
     );
@@ -231,15 +231,15 @@ export default function Result() {
         <div className="text-center mb-6">
           <div className="text-xl font-bold text-purple-400">{accuracy}%</div>
           <div className="text-sm text-gray-400">Accuracy</div>
-        </div>
+      </div>
         
         {/* ホームに戻るボタン */}
-        <Link
-          to="/"
+      <Link
+        to="/"
           className="px-6 py-3 bg-blue-500 rounded-lg text-white hover:bg-blue-600 transition-colors"
-        >
-          ホームに戻る
-        </Link>
+      >
+        ホームに戻る
+      </Link>
       </div>
     </div>
   );

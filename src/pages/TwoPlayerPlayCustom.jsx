@@ -11,7 +11,7 @@ import useGameLoop from "../hooks/useGameLoop";
 const JUDGE = { perfect: 24, good: 48 };
 
 // --- Player 1 (Top Screen) ---
-const P1_LANE_Y_POS = [-96, -32, 32, 96];
+const P1_LANE_Y_POS = [-96, -32, 32, 96]; 
 const P1_KEY_TO_LANE = { KeyQ: 0, KeyW: 1, KeyE: 2, KeyR: 3 };
 
 // --- Player 2 (Bottom Screen) ---
@@ -26,7 +26,7 @@ export default function TwoPlayerPlayCustom() {
 
   const [notes, setNotes] = useState({ p1: [], p2: [] });
   const [offset, setOffset] = useState(0);
-
+  
   const p1ScoreRef = useRef({ perfect: 0, good: 0, miss: 0, score: 0 });
   const p2ScoreRef = useRef({ perfect: 0, good: 0, miss: 0, score: 0 });
   const [p1Score, setP1Score] = useState({ perfect: 0, good: 0, miss: 0, score: 0 });
@@ -71,10 +71,20 @@ export default function TwoPlayerPlayCustom() {
         const baseNotes = (chartData.notes ?? []).sort((a, b) => a.time - b.time);
 
         setNotes({
-          p1: baseNotes.map(n => ({ ...n, id: `p1-${n.time}-${n.lane}`, hit: false, missed: false })),
-          p2: baseNotes.map(n => ({ ...n, id: `p2-${n.time}-${n.lane}`, hit: false, missed: false })),
+          p1: baseNotes.map((n) => ({
+            ...n,
+            id: `p1-${n.time}-${n.lane}`,
+            hit: false,
+            missed: false,
+          })),
+          p2: baseNotes.map((n) => ({
+            ...n,
+            id: `p2-${n.time}-${n.lane}`,
+            hit: false,
+            missed: false,
+          })),
         });
-
+        
         const audioUrl = chartData.audio?.trim() || '/audio/Henceforth.mp3';
         soundRef.current = new Howl({
           src: [audioUrl],
@@ -90,116 +100,12 @@ export default function TwoPlayerPlayCustom() {
               resultTimeoutRef.current = setTimeout(() => {
                 // リザルト画面に渡すデータを整形
                 const resultData = {
-                  counts1: p1ScoreRef.current, score1: p1ScoreRef.current.score,
-                  counts2: p2ScoreRef.current, score2: p2ScoreRef.current.score,
+                    counts1: p1ScoreRef.current, score1: p1ScoreRef.current.score,
+                    counts2: p2ScoreRef.current, score2: p2ScoreRef.current.score,
                 };
                 nav('/result', { state: resultData });
               }, 500);
             }
-          }
-        });
-
-        // 音声の長さを検出して、その長さまでノーツを自動生成
-        soundRef.current.once("load", () => {
-          const audioDuration = soundRef.current.duration();
-          if (audioDuration && audioDuration > 0) {
-            const chartDuration = chartData.duration || 15;
-            const maxTime = Math.max(audioDuration, chartDuration);
-
-            // 既存のノーツの最大時間を取得
-            const existingMaxTime =
-              baseNotes.length > 0
-                ? Math.max(...baseNotes.map((n) => n.time))
-                : 0;
-
-            // 音声の長さまでノーツが不足している場合、自動生成
-            if (existingMaxTime < maxTime) {
-              const additionalNotes = [];
-              const bpm = chartData.bpm || 120;
-              const beatInterval = 60 / bpm; // 1拍の間隔（秒）
-
-              // 既存のノーツのパターンを分析して、そのパターンを繰り返す
-              const patternNotes = baseNotes.slice(0, 4); // 最初の4つのノーツをパターンとして使用
-
-              if (patternNotes.length > 0) {
-                let currentTime = existingMaxTime + beatInterval;
-                while (currentTime <= maxTime) {
-                  patternNotes.forEach((patternNote, index) => {
-                    const newTime = currentTime + (index * beatInterval) / 4;
-                    if (newTime <= maxTime) {
-                      additionalNotes.push({
-                        time: newTime,
-                        lane: patternNote.lane,
-                      });
-                    }
-                  });
-                  currentTime += beatInterval;
-                }
-              } else {
-                // パターンがない場合は、シンプルなパターンを生成
-                let currentTime = 1;
-                while (currentTime <= maxTime) {
-                  for (let lane = 0; lane < 4; lane++) {
-                    additionalNotes.push({
-                      time: currentTime + lane * 0.25,
-                      lane: lane,
-                    });
-                  }
-                  currentTime += 1;
-                }
-              }
-
-              // 自動生成したノーツを追加
-              const allNotes = [...baseNotes, ...additionalNotes];
-              setNotes({
-                p1: allNotes.map((n) => ({
-                  ...n,
-                  id: `p1-${n.time}-${n.lane}`,
-                  hit: false,
-                  missed: false,
-                })),
-                p2: allNotes.map((n) => ({
-                  ...n,
-                  id: `p2-${n.time}-${n.lane}`,
-                  hit: false,
-                  missed: false,
-                })),
-              });
-
-              console.log(
-                `音声の長さ: ${audioDuration}秒, 自動生成したノーツ: ${additionalNotes.length}個`
-              );
-            } else {
-              setNotes({
-                p1: baseNotes.map((n) => ({
-                  ...n,
-                  id: `p1-${n.time}-${n.lane}`,
-                  hit: false,
-                  missed: false,
-                })),
-                p2: baseNotes.map((n) => ({
-                  ...n,
-                  id: `p2-${n.time}-${n.lane}`,
-                  hit: false,
-                  missed: false,
-                })),
-              });
-            }
-          } else {
-            setNotes({
-              p1: baseNotes.map((n) => ({
-                ...n,
-                id: `p1-${n.time}-${n.lane}`,
-                hit: false,
-                missed: false,
-              })),
-              p2: baseNotes.map((n) => ({
-                ...n,
-                id: `p2-${n.time}-${n.lane}`,
-                hit: false,
-                missed: false,
-              })),
-            });
           }
         });
       } catch (e) {
@@ -244,7 +150,7 @@ export default function TwoPlayerPlayCustom() {
 
   const handleMisses = useCallback(() => {
     const currentTime = soundRef.current?.seek() ?? 0;
-
+    
     let p1Changed = false;
     const p1NewNotes = notes.p1.map((n) => {
       if (!n.hit && !n.missed && currentTime - (n.time - offset) > 0.2) {
@@ -274,13 +180,13 @@ export default function TwoPlayerPlayCustom() {
     });
 
     if (p1Changed || p2Changed) {
-      setNotes({
-        p1: p1Changed ? p1NewNotes : notes.p1,
-        p2: p2Changed ? p2NewNotes : notes.p2,
-      });
+        setNotes({
+            p1: p1Changed ? p1NewNotes : notes.p1,
+            p2: p2Changed ? p2NewNotes : notes.p2,
+        });
     }
   }, [notes, offset]);
-
+  
   useGameLoop(() => {
     if (!started || !soundRef.current) return;
     const newTime = soundRef.current.seek();
@@ -342,13 +248,13 @@ export default function TwoPlayerPlayCustom() {
     }));
   }, [started, notes, offset]);
 
-  useEffect(() => {
+   useEffect(() => {
     if (loading) return;
     const onFirstKey = (e) => {
-      if (!soundRef.current?.playing()) {
-        soundRef.current?.play();
-        setStarted(true);
-      }
+        if (!soundRef.current?.playing()) {
+            soundRef.current?.play();
+            setStarted(true);
+        }
     };
     window.addEventListener("keydown", onFirstKey, { once: true });
     window.addEventListener("keydown", onKey);
@@ -419,7 +325,7 @@ export default function TwoPlayerPlayCustom() {
                 lane={n.lane}
               />
             );
-          })}
+        })}
       </div>
 
       {/* --- Player 2 Field (Bottom) --- */}
@@ -451,9 +357,9 @@ export default function TwoPlayerPlayCustom() {
                 lane={n.lane}
               />
             );
-          })}
+        })}
       </div>
-
+      
       <div className="absolute left-4 top-4 text-xl">
         1P: {p1ScoreRef.current.score}
       </div>
