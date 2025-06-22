@@ -9,6 +9,7 @@ import TwoPlayerPlay from './pages/TwoPlayerPlay.jsx';
 import TwoPlayerPlayCustom from './pages/TwoPlayerPlayCustom.jsx';
 import ChartEditor from './pages/ChartEditor.jsx';
 import PlayCustom from './pages/PlayCustom.jsx';
+import CustomCharts from './pages/CustomCharts.jsx';
 import MatchRoom from './pages/MatchRoom.jsx';
 import MultiPlay from './pages/MultiPlay.jsx';
 import { auth } from './firebase';
@@ -47,6 +48,8 @@ export default function App() {
         <Route path="/two-player-select" element={<RequireAuth><TwoPlayerSelect /></RequireAuth>} />
         <Route path="/play2/:musicId/:p1/:p2" element={<RequireAuth><TwoPlayerPlay /></RequireAuth>} />
         <Route path="/chart-editor" element={<RequireAuth><ChartEditor /></RequireAuth>} />
+        <Route path="/custom-charts" element={<RequireAuth><CustomCharts /></RequireAuth>} />
+        <Route path="/play-custom/:chartId" element={<RequireAuth><PlayCustom /></RequireAuth>} />
         <Route path="/play/custom/:chartId" element={<RequireAuth><PlayCustom /></RequireAuth>} />
         <Route path="/play2/custom/:c1" element={<RequireAuth><TwoPlayerPlayCustom /></RequireAuth>} />
       </Routes>

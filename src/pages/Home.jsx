@@ -152,6 +152,12 @@ const Home = () => {
           >
             <FaGamepad /> マッチング
           </button>
+          <button
+            className="w-full py-4 bg-pink-600 hover:bg-pink-700 text-white text-xl font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
+            onClick={() => navigate('/custom-charts')}
+          >
+            <FaMusic /> カスタム譜面で遊ぶ
+          </button>
         </div>
       ) : (
         <div className="flex flex-col items-center mt-8">

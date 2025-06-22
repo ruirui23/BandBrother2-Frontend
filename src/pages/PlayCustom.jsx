@@ -144,7 +144,7 @@ export default function PlayCustom() {
   }, [onKey]);
 
   useEffect(() => {
-    if (started && time >= 15) {
+    if (started && chartDataRef.current && time >= (chartDataRef.current.duration || 15)) {
       soundRef.current?.stop();
       nav('/result', { state: scoreRef.current });
     }

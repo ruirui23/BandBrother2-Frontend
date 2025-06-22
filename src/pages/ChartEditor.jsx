@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth, db, storage } from '../firebase';
 import { collection, addDoc, doc, updateDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const GRID_WIDTH_BASE = 1200; // 横長に拡大
 const NOTE_RADIUS = 18;
@@ -90,17 +90,33 @@ export default function ChartEditor() {
 
   const [editingChartId, setEditingChartId] = useState(null);
   const [userCharts, setUserCharts] = useState([]);
+  const [allCharts, setAllCharts] = useState([]);
   const [isChartListVisible, setIsChartListVisible] = useState(false);
+  const [showAllCharts, setShowAllCharts] = useState(false);
 
   useEffect(() => {
-    const fetchUserCharts = async () => {
-      if (!auth.currentUser) return;
-      const q = query(collection(db, 'charts'), where('createdBy', '==', auth.currentUser.uid));
-      const querySnapshot = await getDocs(q);
-      setUserCharts(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    const fetchCharts = async () => {
+      try {
+        // 全ての譜面を取得
+        const allChartsQuery = query(collection(db, 'charts'));
+        const allChartsSnapshot = await getDocs(allChartsQuery);
+        const allChartsData = allChartsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setAllCharts(allChartsData);
+
+        // ユーザーの譜面のみを取得（認証済みの場合）
+        if (auth.currentUser) {
+          const userChartsQuery = query(collection(db, 'charts'), where('createdBy', '==', auth.currentUser.uid));
+          const userChartsSnapshot = await getDocs(userChartsQuery);
+          const userChartsData = userChartsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setUserCharts(userChartsData);
+        }
+      } catch (error) {
+        console.error('譜面の取得に失敗しました:', error);
+      }
     };
-    fetchUserCharts();
-  }, []);
+    
+    fetchCharts();
+  }, [auth.currentUser]);
 
   const loadChart = (chart) => {
     setTitle(chart.title);
@@ -119,6 +135,29 @@ export default function ChartEditor() {
     setNotes([]);
     setSelectedSong(LOCAL_SONGS[0].url);
     setEditingChartId(null);
+  };
+
+  const refreshCharts = async () => {
+    try {
+      // 全ての譜面を取得
+      const allChartsQuery = query(collection(db, 'charts'));
+      const allChartsSnapshot = await getDocs(allChartsQuery);
+      const allChartsData = allChartsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setAllCharts(allChartsData);
+
+      // ユーザーの譜面のみを取得（認証済みの場合）
+      if (auth.currentUser) {
+        const userChartsQuery = query(collection(db, 'charts'), where('createdBy', '==', auth.currentUser.uid));
+        const userChartsSnapshot = await getDocs(userChartsQuery);
+        const userChartsData = userChartsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setUserCharts(userChartsData);
+      }
+      
+      alert('譜面一覧を更新しました！');
+    } catch (error) {
+      console.error('譜面の更新に失敗しました:', error);
+      alert('譜面一覧の更新に失敗しました。');
+    }
   };
 
   // 音声ファイル変更時の処理
@@ -293,17 +332,53 @@ export default function ChartEditor() {
       
       {isChartListVisible ? (
         <div className="bg-white/10 rounded-2xl shadow-2xl p-8 w-full max-w-4xl">
-          <h3 className="text-xl text-white mb-4">編集する譜面を選択</h3>
-          <div className="max-h-96 overflow-y-auto">
-            {userCharts.map(chart => (
-              <button key={chart.id} onClick={() => loadChart(chart)} className="block w-full text-left p-3 bg-gray-200 hover:bg-gray-300 rounded mb-2 text-black">
-                {chart.title}
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl text-white">編集する譜面を選択</h3>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setShowAllCharts(false)}
+                className={`px-3 py-1 rounded text-sm ${!showAllCharts ? 'bg-blue-500 text-white' : 'bg-gray-600 text-gray-300'}`}
+              >
+                自分の譜面
               </button>
-            ))}
+              <button 
+                onClick={() => setShowAllCharts(true)}
+                className={`px-3 py-1 rounded text-sm ${showAllCharts ? 'bg-blue-500 text-white' : 'bg-gray-600 text-gray-300'}`}
+              >
+                全ての譜面
+              </button>
+            </div>
           </div>
-          <button onClick={() => setIsChartListVisible(false)} className="mt-4 px-4 py-2 bg-gray-600 text-white rounded">
-            キャンセル
-          </button>
+          <div className="max-h-96 overflow-y-auto">
+            {(showAllCharts ? allCharts : userCharts).map(chart => (
+              <div key={chart.id} className="bg-gray-200 hover:bg-gray-300 rounded mb-2 p-3">
+                <button 
+                  onClick={() => loadChart(chart)} 
+                  className="w-full text-left text-black"
+                >
+                  <div className="font-medium">{chart.title}</div>
+                  <div className="text-sm text-gray-600">
+                    BPM: {chart.bpm} | 長さ: {chart.duration}秒 | 
+                    音源: {chart.audioTitle || '不明'} | 
+                    作成者: {chart.createdBy === auth.currentUser?.uid ? '自分' : chart.createdBy || '不明'}
+                  </div>
+                </button>
+              </div>
+            ))}
+            {(showAllCharts ? allCharts : userCharts).length === 0 && (
+              <div className="text-center text-gray-400 py-4">
+                {showAllCharts ? '譜面がありません' : 'あなたの譜面がありません'}
+              </div>
+            )}
+          </div>
+          <div className="flex gap-2 mt-4">
+            <button onClick={refreshCharts} className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded">
+              更新
+            </button>
+            <button onClick={() => setIsChartListVisible(false)} className="px-4 py-2 bg-gray-600 text-white rounded">
+              キャンセル
+            </button>
+          </div>
         </div>
       ) : (
       <div className="bg-white/10 rounded-2xl shadow-2xl p-8 w-full max-w-4xl flex flex-col items-center gap-6">
