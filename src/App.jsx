@@ -12,6 +12,7 @@ import PlayCustom from './pages/PlayCustom.jsx';
 import CustomCharts from './pages/CustomCharts.jsx';
 import MatchRoom from './pages/MatchRoom.jsx';
 import MultiPlay from './pages/MultiPlay.jsx';
+import MultiMusicSelect from './pages/MultiMusicSelect.jsx';
 import { auth } from './firebase';
 import { useEffect, useState } from 'react';
 
@@ -44,6 +45,7 @@ export default function App() {
         } />
         <Route path="/multi-play/:roomId/:difficulty" element={<MultiPlay />} />
         <Route path="/result" element={<Result />} />
+        <Route path="/multi-music-select" element={<RequireAuth><MultiMusicSelect /></RequireAuth>} />
         <Route path="/match" element={<RequireAuth><MatchRoom/></RequireAuth>} />
         <Route path="/two-player-select" element={<RequireAuth><TwoPlayerSelect /></RequireAuth>} />
         <Route path="/play2/:musicId/:p1/:p2" element={<RequireAuth><TwoPlayerPlay /></RequireAuth>} />

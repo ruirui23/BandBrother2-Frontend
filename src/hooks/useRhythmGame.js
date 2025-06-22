@@ -18,9 +18,11 @@ const VALID_KEYS = Object.keys(KEY_TO_LANE);
 export default function useRhythmGame(songData, difficulty, onGameEnd) {
   const { add, reset, counts, score } = useScore();
   
-  const diffObj = songData.difficulty[difficulty] || songData.difficulty.Easy;
-  const rawNotes = diffObj.notes ?? [];
-  const offset = songData.offset ?? 0;
+  // songDataの構造を安全にチェック
+  const difficulties = songData?.difficulty || {};
+  const diffObj = difficulties[difficulty] || difficulties.Easy || { notes: [] };
+  const rawNotes = diffObj.notes ?? songData?.notes ?? [];
+  const offset = songData?.offset ?? 0;
   
   const notesRef = useRef([]);
   const [notes, setNotes] = useState([]);
@@ -33,12 +35,30 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
     setNotes(notesRef.current);
   }, [rawNotes]);
   const [started, setStarted] = useState(false);
-  const [sound] = useState(() => new Howl({ src: [songData.audio], html5: true }));
+  const [sound, setSound] = useState(null);
   const [time, setTime] = useState(0);
   const [gameState, setGameState] = useState('waiting');
   
   const gameStateRef = useRef(gameState);
   gameStateRef.current = gameState;
+
+  // 音声ファイル初期化
+  useEffect(() => {
+    const audioSrc = songData?.audio || '/audio/Henceforth.mp3';
+    const newSound = new Howl({ 
+      src: [audioSrc], 
+      html5: true 
+    });
+    setSound(newSound);
+    
+    // クリーンアップ: 前の音声を停止・削除
+    return () => {
+      if (sound) {
+        sound.stop();
+        sound.unload();
+      }
+    };
+  }, [songData?.audio]);
 
   // ゲーム初期化
   useEffect(() => {
@@ -47,14 +67,14 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
 
   // ゲームループ
   useGameLoop(() => {
-    if (started && gameStateRef.current === 'playing') {
+    if (started && gameStateRef.current === 'playing' && sound) {
       setTime(sound.seek() || 0);
     }
   });
 
   // ゲーム開始
   const startGame = useCallback(() => {
-    if (!started) {
+    if (!started && sound) {
       setStarted(true);
       setGameState('playing');
       sound.seek(0);
@@ -64,14 +84,14 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
 
   // 15秒でゲーム終了
   useEffect(() => {
-    if (started && time >= 15 && gameState === 'playing') {
+    if (started && time >= 15 && gameState === 'playing' && sound) {
       setGameState('finished');
       sound.stop();
       if (onGameEnd) {
         onGameEnd({ counts, score, time });
       }
     }
-  }, [time, started, gameState, counts, score, onGameEnd]);
+  }, [time, started, gameState, counts, score, onGameEnd, sound]);
 
   // キー入力判定
   const handleKeyPress = useCallback((e) => {
