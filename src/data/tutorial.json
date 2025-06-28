@@ -48,7 +48,7 @@
 
       ]
     },
-"Normal": {
+    "Normal": {
       "level": 6,
       "notes": [
         { "lane": 2, "time": 1.3365384615384617, "type": "tap" },
