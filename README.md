@@ -1,4 +1,4 @@
-# バンドブラザー２フロントエンドリポジトリ
+# バンドブラザー２デプロイURL
 
 https://bandbrother2-2764c.web.app
 
