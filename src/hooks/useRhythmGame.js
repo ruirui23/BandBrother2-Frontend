@@ -3,6 +3,7 @@ import { Howl } from 'howler'
 import { useScore } from '../store'
 import useGameLoop from './useGameLoop'
 import { HIT_X, NOTE_SPEED, WINDOW_SEC } from '../constants'
+import { playHitSound } from '../utils/soundEffects'
 
 const JUDGE = { perfect: 24, good: 48 }
 
@@ -82,11 +83,15 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
 
   // ゲーム開始
   const startGame = useCallback(() => {
+    console.log('startGame called. Started:', started, 'Sound:', !!sound)
     if (!started && sound) {
       setStarted(true)
       setGameState('playing')
       sound.seek(0)
       sound.play()
+      
+      // オーディオコンテキストを有効化（ユーザーインタラクションが必要）
+      console.log('Game started successfully! State set to playing.')
     }
   }, [started, sound])
 
@@ -104,11 +109,15 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
   // キー入力判定
   const handleKeyPress = useCallback(
     e => {
+      console.log('Key pressed:', e.code, 'Game state:', gameState, 'Started:', started, 'Valid key:', VALID_KEYS.includes(e.code))
+      
       if (gameState !== 'playing' || !started || !VALID_KEYS.includes(e.code))
         return
 
       const lane = KEY_TO_LANE[e.code]
       const currentTime = time
+      
+      console.log('Looking for notes. Current time:', currentTime, 'Lane:', lane, 'Total notes:', notesRef.current.length)
 
       // 押されたキーに対応するレーンの中で、最も判定ラインに近いノーツを探す
       let bestMatchIndex = -1
@@ -135,9 +144,17 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
       const note = notesRef.current[bestMatchIndex]
       if (minDistance < JUDGE.perfect) {
         add('perfect')
+        console.log('Perfect hit!')
       } else {
         add('good')
+        console.log('Good hit!')
       }
+      
+      // ノーツヒット音を再生
+      console.log('About to call playHitSound...')
+      playHitSound()
+      console.log('Called playHitSound')
+      
       note.hit = true
       setNotes([...notesRef.current]) // Force re-render
     },
@@ -146,8 +163,18 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
 
   // キーイベントリスナー
   useEffect(() => {
-    window.addEventListener('keydown', handleKeyPress)
-    return () => window.removeEventListener('keydown', handleKeyPress)
+    console.log('Setting up key event listener...')
+    
+    const keyHandler = (e) => {
+      console.log('Global key pressed:', e.code)
+      handleKeyPress(e)
+    }
+    
+    window.addEventListener('keydown', keyHandler)
+    return () => {
+      console.log('Removing key event listener...')
+      window.removeEventListener('keydown', keyHandler)
+    }
   }, [handleKeyPress])
 
   // ノーツ通過でmiss
@@ -157,6 +184,10 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
     const updatedNotes = notesRef.current.map(n => {
       if (!n.hit && !n.missed && time - (n.time - offset) > 0.2) {
         add('miss')
+        console.log('Miss detected!')
+        console.log('About to call playHitSound for miss...')
+        playHitSound() // ミス音を再生
+        console.log('Called playHitSound for miss')
         missedAny = true
         return { ...n, missed: true }
       }

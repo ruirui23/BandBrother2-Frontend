@@ -8,6 +8,7 @@ import useGameLoop from '../hooks/useGameLoop'
 import { HIT_X, NOTE_SPEED, WINDOW_SEC } from '../constants'
 import Note from '../components/Note'
 import HitLine from '../components/HitLine'
+import { playHitSound } from '../utils/soundEffects'
 
 const JUDGE = { perfect: 24, good: 48 } // px単位: perfect=24px(0.04s*300), good=48px(0.10s*300)
 
@@ -117,6 +118,7 @@ export default function Play() {
         add('miss')
         showJudgement('Miss')
         setJudgementColor('text-blue-400')
+        playHitSound() // ミス音を再生
       }
     }
   })
@@ -172,6 +174,10 @@ export default function Play() {
         showJudgement('Good')
         setJudgementColor('text-orange-500')
       }
+      
+      // ノーツヒット音を再生
+      playHitSound()
+      
       note.hit = true
       setTime(currentTime) // Force re-render
     },
