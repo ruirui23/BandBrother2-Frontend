@@ -311,7 +311,8 @@ export default function TwoPlayerPlayCustom() {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-black text-white text-center">
         <div className="text-2xl mb-4">
-          1Pは上のレーンからQ，W，E，Rキー 2PはU，I，O，Pキーを押してプレイしてね
+          1Pは上のレーンからQ，W，E，Rキー
+          2PはU，I，O，Pキーを押してプレイしてね
         </div>
         <div className="text-xl text-gray-300">タップしてスタート</div>
       </div>

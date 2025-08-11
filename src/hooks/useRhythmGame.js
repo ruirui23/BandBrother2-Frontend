@@ -21,7 +21,10 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
   // songDataの構造を安全にチェック
   const difficulties = songData?.difficulty || {}
   const diffObj = difficulties[difficulty] || difficulties.Easy || { notes: [] }
-  const rawNotes = useMemo(() => diffObj.notes ?? songData?.notes ?? [], [diffObj.notes, songData?.notes])
+  const rawNotes = useMemo(
+    () => diffObj.notes ?? songData?.notes ?? [],
+    [diffObj.notes, songData?.notes]
+  )
   const offset = songData?.offset ?? 0
 
   const notesRef = useRef([])
