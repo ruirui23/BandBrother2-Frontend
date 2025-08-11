@@ -1,37 +1,44 @@
-import { useParams, useNavigate } from 'react-router-dom';
-import song from '../data/tutorial.json';
-import { useEffect, useState } from 'react';
-import { db, auth } from '../firebase';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { useParams, useNavigate } from 'react-router-dom'
+import song from '../data/tutorial.json'
+import { useEffect, useState } from 'react'
+import { db, auth } from '../firebase'
+import { collection, getDocs, query, where } from 'firebase/firestore'
 
 export default function SelectDifficulty() {
-  const nav = useNavigate();
-  const diffs = Object.keys(song.difficulty);
-  const [customCharts, setCustomCharts] = useState([]);
-  const [showCustom, setShowCustom] = useState(false);
+  const nav = useNavigate()
+  const diffs = Object.keys(song.difficulty)
+  const [customCharts, setCustomCharts] = useState([])
+  const [showCustom, setShowCustom] = useState(false)
 
   useEffect(() => {
     // Firebaseからカスタム譜面を取得（ログインユーザーのみ）
     const fetchCharts = async () => {
-      const uid = auth.currentUser?.uid;
+      const uid = auth.currentUser?.uid
       if (!uid) {
-        setCustomCharts([]);
-        return;
+        setCustomCharts([])
+        return
       }
-      const chartsQuery = query(collection(db, 'charts'), where('createdBy', '==', uid));
-      const snap = await getDocs(chartsQuery);
-      setCustomCharts(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    };
-    fetchCharts();
-  }, [auth.currentUser]);
+      const chartsQuery = query(
+        collection(db, 'charts'),
+        where('createdBy', '==', uid)
+      )
+      const snap = await getDocs(chartsQuery)
+      setCustomCharts(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })))
+    }
+    fetchCharts()
+  }, [auth.currentUser])
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-black via-gray-900 to-blue-900 gap-6">
       <button
         className="absolute left-4 top-4 px-4 py-2 bg-gray-600 text-white rounded z-30"
         onClick={() => nav(-1)}
-      >戻る</button>
-      <h2 className="text-3xl font-bold mb-6 text-white drop-shadow">難易度を選択</h2>
+      >
+        戻る
+      </button>
+      <h2 className="text-3xl font-bold mb-6 text-white drop-shadow">
+        難易度を選択
+      </h2>
       {!showCustom && (
         <div className="flex flex-col gap-4 w-full max-w-xs">
           {diffs.map((d, i) => (
@@ -46,5 +53,5 @@ export default function SelectDifficulty() {
         </div>
       )}
     </div>
-  );
+  )
 }
