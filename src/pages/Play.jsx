@@ -1,204 +1,107 @@
 // src/pages/Play.jsx
 import { useParams, useNavigate } from 'react-router-dom'
-import { useEffect, useState, useCallback, useRef } from 'react'
-import { Howl } from 'howler'
+import { useEffect, useState, useRef } from 'react'
 import song from '../data/tutorial.json'
-import { useScore } from '../store'
-import useGameLoop from '../hooks/useGameLoop'
-import { HIT_X, NOTE_SPEED, WINDOW_SEC } from '../constants'
+import useGameCore from '../hooks/useGameCore'
+import { HIT_X, NOTE_SPEED } from '../constants'
 import Note from '../components/Note'
 import HitLine from '../components/HitLine'
-import { playHitSound } from '../utils/soundEffects'
-
-const JUDGE = { perfect: 24, good: 48 } // px単位: perfect=24px(0.04s*300), good=48px(0.10s*300)
 
 // レーンのY座標を定義
 const LANE_Y_POSITIONS = [-96, -32, 32, 96]
-
-// キーとレーンのマッピング
-const KEY_TO_LANE = {
-  KeyD: 0,
-  KeyF: 1,
-  KeyJ: 2,
-  KeyK: 3,
-}
-const VALID_KEYS = Object.keys(KEY_TO_LANE)
 
 export default function Play() {
   /* ---------- URL パラメータ ---------- */
   const { difficulty = 'Easy' } = useParams()
   const nav = useNavigate()
 
-  /* ---------- スコア ---------- */
-  const { add, reset, counts, score } = useScore()
+  /* ---------- ゲーム終了時の処理 ---------- */
+  const handleGameEnd = ({ counts, score }) => {
+    setTimeout(() => {
+      nav('/result', { state: { counts, score } })
+    }, 500)
+  }
 
-  /* ---------- 曲・譜面データ ---------- */
-  const diffObj = song.difficulty[difficulty] || song.difficulty.Easy
-  const offset = song.offset ?? 0 // undefined → 0
+  /* ---------- 共通ゲームロジック ---------- */
+  const {
+    notes: visibleNotes,
+    time,
+    offset,
+    started,
+    score,
+    counts,
+    sound,
+    startGame,
+    setOnJudgment,
+  } = useGameCore(song, difficulty, handleGameEnd)
 
-  const notesRef = useRef([])
-  const [started, setStarted] = useState(false)
-  const [time, setTime] = useState(0)
-  const [isSoundLoaded, setIsSoundLoaded] = useState(false)
-
-  const soundRef = useRef(null)
-  const scoreRef = useRef({ counts, score })
   /* ---------- 判定表示 ---------- */
   const [judgement, setJudgement] = useState('')
   const [visible, setVisible] = useState(false)
-  const [_ANIMATING, _SET_ANIMATING] = useState(false)
-  const timeoutRef = useRef(null)
   const [judgementColor, setJudgementColor] = useState('text-yellow-400')
+  const scoreRef = useRef({ counts, score })
 
+  // スコア参照の更新
   useEffect(() => {
-    return useScore.subscribe(
-      state => (scoreRef.current = { counts: state.counts, score: state.score })
-    )
-  }, [])
+    scoreRef.current = { counts, score }
+  }, [counts, score])
 
+  // 音声読み込み状態
+  const [isSoundLoaded, setIsSoundLoaded] = useState(false)
+
+  // 音声読み込み状態の監視
   useEffect(() => {
-    reset()
-    notesRef.current = (diffObj.notes ?? [])
-      .sort((a, b) => a.time - b.time)
-      .map(n => ({
-        ...n,
-        id: `${n.time}-${n.lane}`,
-        hit: false,
-        missed: false,
-      }))
-
-    soundRef.current = new Howl({
-      src: [song.audio],
-      html5: true,
-      preload: true,
-      onload: () => setIsSoundLoaded(true),
-      onend: () => {
-        setTimeout(() => {
-          nav('/result', { state: scoreRef.current })
-        }, 500)
-      },
-    })
-
-    return () => {
-      soundRef.current?.stop()
-      soundRef.current?.unload()
+    if (sound) {
+      setIsSoundLoaded(true)
     }
-  }, [difficulty, reset, nav, diffObj.notes])
+  }, [sound])
 
+  // 最初のキー入力でゲーム開始
   useEffect(() => {
-    if (!isSoundLoaded || !soundRef.current) return
+    if (!sound) return
 
     const onFirstKey = () => {
-      if (!soundRef.current.playing()) {
-        soundRef.current.play()
-        setStarted(true)
+      if (!started) {
+        startGame()
       }
     }
     window.addEventListener('keydown', onFirstKey, { once: true })
     return () => {
       window.removeEventListener('keydown', onFirstKey)
     }
-  }, [isSoundLoaded])
-
-  useGameLoop(() => {
-    if (!started || !soundRef.current) return
-    const newTime = soundRef.current.seek()
-    if (typeof newTime !== 'number') return
-    setTime(newTime)
-
-    let misses = 0
-    for (const n of notesRef.current) {
-      if (!n.hit && !n.missed && newTime - (n.time - offset) > 0.2) {
-        n.missed = true
-        misses++
-      }
-    }
-    if (misses > 0) {
-      for (let i = 0; i < misses; i++) {
-        add('miss')
-        showJudgement('Miss')
-        setJudgementColor('text-blue-400')
-        playHitSound() // ミス音を再生
-      }
-    }
-  })
+  }, [sound, started, startGame])
 
   const showJudgement = text => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current)
     setJudgement(text)
     setVisible(true)
 
     setTimeout(() => {
       setVisible(false)
-      _SET_ANIMATING(false)
     }, 500) // 0.5秒で消す
   }
 
-  const onKey = useCallback(
-    e => {
-      if (!started || !VALID_KEYS.includes(e.code)) return
-
-      const lane = KEY_TO_LANE[e.code]
-      const currentTime = soundRef.current?.seek() || 0
-
-      // 押されたキーに対応するレーンの中で、最も判定ラインに近いノーツを探す
-      let bestMatchIndex = -1
-      let minDistance = Infinity
-
-      notesRef.current.forEach((n, index) => {
-        if (n.lane !== lane || n.hit || n.missed) return
-
-        const distance = Math.abs(
-          HIT_X - (HIT_X + (n.time - currentTime - offset) * NOTE_SPEED)
-        )
-
-        if (distance < JUDGE.good && distance < minDistance) {
-          minDistance = distance
-          bestMatchIndex = index
-        }
-      })
-
-      if (bestMatchIndex === -1) {
-        // 対応レーンに叩けるノーツがなければミス（お好みで）
-        // add('miss');
-        return
-      }
-
-      const note = notesRef.current[bestMatchIndex]
-      if (minDistance < JUDGE.perfect) {
-        add('perfect')
+  // 判定結果コールバックの設定
+  useEffect(() => {
+    setOnJudgment(judgmentType => {
+      console.log('Judgment received:', judgmentType)
+      if (judgmentType === 'perfect') {
         showJudgement('Perfect')
         setJudgementColor('text-yellow-400')
-      } else {
-        add('good')
+      } else if (judgmentType === 'good') {
         showJudgement('Good')
         setJudgementColor('text-orange-500')
+      } else if (judgmentType === 'miss') {
+        showJudgement('Miss')
+        setJudgementColor('text-blue-400')
       }
-
-      // ノーツヒット音を再生
-      playHitSound()
-
-      note.hit = true
-      setTime(currentTime) // Force re-render
-    },
-    [started, offset, add]
-  )
-
-  useEffect(() => {
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onKey])
-
-  /* ---------- 描画対象ノーツ ---------- */
-  const visibleNotes = notesRef.current.filter(
-    n => !n.hit && !n.missed && Math.abs(n.time - time - offset) < WINDOW_SEC
-  )
+    })
+  }, [setOnJudgment])
 
   const screenCenterY =
     typeof window !== 'undefined' ? window.innerHeight / 2 : 0
 
   /* ---------- 描画 ---------- */
-  if (!isSoundLoaded)
+  if (!isSoundLoaded || !sound)
     return (
       <div className="flex items-center justify-center h-screen bg-black text-white text-2xl">
         Loading...
@@ -253,13 +156,13 @@ export default function Play() {
 
       {/* ノーツ表示 */}
       {visibleNotes.map(n => {
-        const yPos = screenCenterY + LANE_Y_POSITIONS[n.lane]
+        const yPos = screenCenterY + LANE_Y_POSITIONS[n.lane || 0]
         return (
           <Note
             key={n.id}
             x={HIT_X + (n.time - time - offset) * NOTE_SPEED}
             y={yPos}
-            lane={n.lane}
+            lane={n.lane || 0}
           />
         )
       })}
