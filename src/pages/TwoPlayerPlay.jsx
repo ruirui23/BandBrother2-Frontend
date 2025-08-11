@@ -1,249 +1,252 @@
-import { useParams, useNavigate } from "react-router-dom";
-import { useEffect, useState, useCallback, useRef } from "react";
-import { Howl } from "howler";
-import songData from "../data/tutorial.json";
-import { HIT_X, NOTE_SPEED, WINDOW_SEC } from "../constants";
-import Note from "../components/Note";
-import HitLine from "../components/HitLine";
-import useGameLoop from "../hooks/useGameLoop";
+import { useParams, useNavigate } from 'react-router-dom'
+import { useEffect, useState, useCallback, useRef } from 'react'
+import { Howl } from 'howler'
+import songData from '../data/tutorial.json'
+import { HIT_X, NOTE_SPEED, WINDOW_SEC } from '../constants'
+import Note from '../components/Note'
+import HitLine from '../components/HitLine'
+import useGameLoop from '../hooks/useGameLoop'
 
-const JUDGE = { perfect: 24, good: 48 };
+const JUDGE = { perfect: 24, good: 48 }
 
 // --- Player 1 (Top Screen) ---
-const P1_LANE_Y_POS = [-96, -32, 32, 96];
-const P1_KEY_TO_LANE = { KeyQ: 0, KeyW: 1, KeyE: 2, KeyR: 3 };
+const P1_LANE_Y_POS = [-96, -32, 32, 96]
+const P1_KEY_TO_LANE = { KeyQ: 0, KeyW: 1, KeyE: 2, KeyR: 3 }
 
 // --- Player 2 (Bottom Screen) ---
-const P2_LANE_Y_POS = [-96, -32, 32, 96];
-const P2_KEY_TO_LANE = { KeyU: 0, KeyI: 1, KeyO: 2, KeyP: 3 };
+const P2_LANE_Y_POS = [-96, -32, 32, 96]
+const P2_KEY_TO_LANE = { KeyU: 0, KeyI: 1, KeyO: 2, KeyP: 3 }
 
 const ALL_VALID_KEYS = [
   ...Object.keys(P1_KEY_TO_LANE),
   ...Object.keys(P2_KEY_TO_LANE),
-];
+]
 
 export default function TwoPlayerPlay() {
-  const { p1 = "Easy" } = useParams();
-  const nav = useNavigate();
-  const offset = songData.offset ?? 0;
+  const { p1 = 'Easy' } = useParams()
+  const nav = useNavigate()
+  const offset = songData.offset ?? 0
 
-  const [notes, setNotes] = useState({ p1: [], p2: [] });
-  const p1ScoreRef = useRef({ perfect: 0, good: 0, miss: 0, score: 0 });
-  const p2ScoreRef = useRef({ perfect: 0, good: 0, miss: 0, score: 0 });
+  const [notes, setNotes] = useState({ p1: [], p2: [] })
+  const p1ScoreRef = useRef({ perfect: 0, good: 0, miss: 0, score: 0 })
+  const p2ScoreRef = useRef({ perfect: 0, good: 0, miss: 0, score: 0 })
 
-  const [started, setStarted] = useState(false);
-  const [time, setTime] = useState(0);
-  const soundRef = useRef(null);
+  const [started, setStarted] = useState(false)
+  const [time, setTime] = useState(0)
+  const soundRef = useRef(null)
   /*一人目の判定表示用*/
-  const [judgement1, setJudgement1] = useState("");
-  const [visible1, setVisible1] = useState(false);
-  const [animating1, setAnimating1] = useState(false);
-  const timeoutRef1 = useRef(null);
-  const [judgementColor1, setJudgementColor1] = useState("text-yellow-400");
+  const [judgement1, setJudgement1] = useState('')
+  const [visible1, setVisible1] = useState(false)
+  const [animating1, setAnimating1] = useState(false)
+  const timeoutRef1 = useRef(null)
+  const [judgementColor1, setJudgementColor1] = useState('text-yellow-400')
   /*二人目の判定表示用*/
-  const [judgement2, setJudgement2] = useState("");
-  const [visible2, setVisible2] = useState(false);
-  const [animating2, setAnimating2] = useState(false);
-  const timeoutRef2 = useRef(null);
-  const [judgementColor2, setJudgementColor2] = useState("text-yellow-400");
+  const [judgement2, setJudgement2] = useState('')
+  const [visible2, setVisible2] = useState(false)
+  const [animating2, setAnimating2] = useState(false)
+  const timeoutRef2 = useRef(null)
+  const [judgementColor2, setJudgementColor2] = useState('text-yellow-400')
 
   useEffect(() => {
-    const chartNotes = songData.difficulty[p1]?.notes ?? [];
+    const chartNotes = songData.difficulty[p1]?.notes ?? []
     setNotes({
-      p1: chartNotes.map((n) => ({
+      p1: chartNotes.map(n => ({
         ...n,
         id: `p1-${n.time}-${n.lane}`,
         hit: false,
         missed: false,
       })),
-      p2: chartNotes.map((n) => ({
+      p2: chartNotes.map(n => ({
         ...n,
         id: `p2-${n.time}-${n.lane}`,
         hit: false,
         missed: false,
       })),
-    });
+    })
 
-    p1ScoreRef.current = { perfect: 0, good: 0, miss: 0, score: 0 };
-    p2ScoreRef.current = { perfect: 0, good: 0, miss: 0, score: 0 };
+    p1ScoreRef.current = { perfect: 0, good: 0, miss: 0, score: 0 }
+    p2ScoreRef.current = { perfect: 0, good: 0, miss: 0, score: 0 }
 
     soundRef.current = new Howl({
       src: [songData.audio],
       html5: true,
       onend: () => {
-        nav("/result", {
+        nav('/result', {
           state: {
             counts1: p1ScoreRef.current,
             score1: p1ScoreRef.current.score,
             counts2: p2ScoreRef.current,
             score2: p2ScoreRef.current.score,
           },
-        });
+        })
       },
-    });
+    })
 
-    return () => soundRef.current?.unload();
-  }, [p1, nav]);
+    return () => soundRef.current?.unload()
+  }, [p1, nav])
 
-  const showJudgement1 = (text) => {
-    if (timeoutRef1.current) clearTimeout(timeoutRef1.current);
-    setJudgement1(text);
-    setVisible1(true);
-
-    setTimeout(() => {
-      setVisible1(false);
-      setAnimating1(false);
-    }, 500); // 0.5秒で消す
-  };
-
-  const showJudgement2 = (text) => {
-    if (timeoutRef2.current) clearTimeout(timeoutRef2.current);
-    setJudgement2(text);
-    setVisible2(true);
+  const showJudgement1 = text => {
+    if (timeoutRef1.current) clearTimeout(timeoutRef1.current)
+    setJudgement1(text)
+    setVisible1(true)
 
     setTimeout(() => {
-      setVisible2(false);
-      setAnimating2(false);
-    }, 500); // 0.5秒で消す
-  };
+      setVisible1(false)
+      setAnimating1(false)
+    }, 500) // 0.5秒で消す
+  }
+
+  const showJudgement2 = text => {
+    if (timeoutRef2.current) clearTimeout(timeoutRef2.current)
+    setJudgement2(text)
+    setVisible2(true)
+
+    setTimeout(() => {
+      setVisible2(false)
+      setAnimating2(false)
+    }, 500) // 0.5秒で消す
+  }
 
   const handleMisses = useCallback(() => {
-    const currentTime = soundRef.current?.seek() ?? 0;
+    const currentTime = soundRef.current?.seek() ?? 0
 
-    let p1Changed = false;
-    const p1NewNotes = notes.p1.map((n) => {
+    let p1Changed = false
+    const p1NewNotes = notes.p1.map(n => {
       if (!n.hit && !n.missed && currentTime - (n.time - offset) > 0.2) {
-        p1ScoreRef.current.miss++;
-        showJudgement1("Miss");
-        setJudgementColor1("text-blue-400");
-        p1ScoreRef.current.score -= 2;
-        p1Changed = true;
-        return { ...n, missed: true };
+        p1ScoreRef.current.miss++
+        showJudgement1('Miss')
+        setJudgementColor1('text-blue-400')
+        p1ScoreRef.current.score -= 2
+        p1Changed = true
+        return { ...n, missed: true }
       }
-      return n;
-    });
+      return n
+    })
 
-    let p2Changed = false;
-    const p2NewNotes = notes.p2.map((n) => {
+    let p2Changed = false
+    const p2NewNotes = notes.p2.map(n => {
       if (!n.hit && !n.missed && currentTime - (n.time - offset) > 0.2) {
-        p2ScoreRef.current.miss++;
-        showJudgement2("Miss");
-        setJudgementColor2("text-blue-400");
-        p2ScoreRef.current.score -= 2;
-        p2Changed = true;
-        return { ...n, missed: true };
+        p2ScoreRef.current.miss++
+        showJudgement2('Miss')
+        setJudgementColor2('text-blue-400')
+        p2ScoreRef.current.score -= 2
+        p2Changed = true
+        return { ...n, missed: true }
       }
-      return n;
-    });
+      return n
+    })
 
     if (p1Changed || p2Changed) {
-      setNotes((prev) => ({
+      setNotes(prev => ({
         ...prev,
         p1: p1Changed ? p1NewNotes : prev.p1,
         p2: p2Changed ? p2NewNotes : prev.p2,
-      }));
+      }))
     }
-  }, [notes, offset]);
+  }, [notes, offset])
 
   useGameLoop(() => {
-    if (!started || !soundRef.current) return;
-    const newTime = soundRef.current.seek();
-    if (typeof newTime !== "number") return;
-    setTime(newTime);
-    handleMisses();
-  });
+    if (!started || !soundRef.current) return
+    const newTime = soundRef.current.seek()
+    if (typeof newTime !== 'number') return
+    setTime(newTime)
+    handleMisses()
+  })
 
   const onKey = useCallback(
-    (e) => {
-      if (!started || !ALL_VALID_KEYS.includes(e.code)) return;
+    e => {
+      if (!started || !ALL_VALID_KEYS.includes(e.code)) return
 
-      const currentTime = soundRef.current?.seek() || 0;
-      const isP1Key = Object.keys(P1_KEY_TO_LANE).includes(e.code);
+      const currentTime = soundRef.current?.seek() || 0
+      const isP1Key = Object.keys(P1_KEY_TO_LANE).includes(e.code)
 
-      const player = isP1Key ? "p1" : "p2";
+      const player = isP1Key ? 'p1' : 'p2'
       const targetLane = isP1Key
         ? P1_KEY_TO_LANE[e.code]
-        : P2_KEY_TO_LANE[e.code];
-      const scoreRef = isP1Key ? p1ScoreRef : p2ScoreRef;
+        : P2_KEY_TO_LANE[e.code]
+      const scoreRef = isP1Key ? p1ScoreRef : p2ScoreRef
 
-      let bestMatchIndex = -1;
-      let minDistance = Infinity;
+      let bestMatchIndex = -1
+      let minDistance = Infinity
 
       notes[player].forEach((n, index) => {
-        if (n.lane !== targetLane || n.hit || n.missed) return;
+        if (n.lane !== targetLane || n.hit || n.missed) return
         const distance = Math.abs(
           HIT_X - (HIT_X + (n.time - currentTime - offset) * NOTE_SPEED)
-        );
+        )
         if (distance < JUDGE.good && distance < minDistance) {
-          minDistance = distance;
-          bestMatchIndex = index;
+          minDistance = distance
+          bestMatchIndex = index
         }
-      });
+      })
 
-      if (bestMatchIndex === -1) return;
+      if (bestMatchIndex === -1) return
 
       if (minDistance < JUDGE.perfect) {
-        scoreRef.current.perfect++;
-        scoreRef.current.score += 5;
+        scoreRef.current.perfect++
+        scoreRef.current.score += 5
         if (isP1Key) {
-          showJudgement1("Perfect");
-          setJudgementColor1("text-yellow-400");
+          showJudgement1('Perfect')
+          setJudgementColor1('text-yellow-400')
         } else {
-          showJudgement2("Perfect");
-          setJudgementColor2("text-yellow-400");
+          showJudgement2('Perfect')
+          setJudgementColor2('text-yellow-400')
         }
       } else {
-        scoreRef.current.good++;
-        scoreRef.current.score += 2;
+        scoreRef.current.good++
+        scoreRef.current.score += 2
         if (isP1Key) {
-          showJudgement1("Good");
-          setJudgementColor1("text-orange-500");
+          showJudgement1('Good')
+          setJudgementColor1('text-orange-500')
         } else {
-          showJudgement2("Good");
-          setJudgementColor2("text-orange-500");
+          showJudgement2('Good')
+          setJudgementColor2('text-orange-500')
         }
       }
 
-      setNotes((prev) => ({
+      setNotes(prev => ({
         ...prev,
         [player]: prev[player].map((n, idx) =>
           idx === bestMatchIndex ? { ...n, hit: true } : n
         ),
-      }));
+      }))
     },
     [started, notes, offset]
-  );
+  )
 
   useEffect(() => {
-    const onFirstKey = (e) => {
+    const onFirstKey = e => {
       if (!soundRef.current?.playing()) {
-        soundRef.current?.play();
-        setStarted(true);
+        soundRef.current?.play()
+        setStarted(true)
       }
-    };
-    window.addEventListener("keydown", onFirstKey, { once: true });
-    window.addEventListener("keydown", onKey);
+    }
+    window.addEventListener('keydown', onFirstKey, { once: true })
+    window.addEventListener('keydown', onKey)
     return () => {
-      window.removeEventListener("keydown", onFirstKey);
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [onKey, started]);
+      window.removeEventListener('keydown', onFirstKey)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [onKey, started])
 
   if (!notes.p1.length) {
     return (
       <div className="flex items-center justify-center h-screen bg-black text-white text-2xl">
         Loading Chart...
       </div>
-    );
+    )
   }
-  if (!started) return (
-    <div className="flex flex-col items-center justify-center h-screen bg-black text-white text-center">
-      <div className="text-2xl mb-4">１Pは上のレーンからQ，W，E，Rキー　２PはU，I，O，Pキーを押してプレイしてね</div>
-      <div className="text-xl text-gray-300">タップしてスタート</div>
-    </div>
-  );
+  if (!started)
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-black text-white text-center">
+        <div className="text-2xl mb-4">
+          １Pは上のレーンからQ，W，E，Rキー　２PはU，I，O，Pキーを押してプレイしてね
+        </div>
+        <div className="text-xl text-gray-300">タップしてスタート</div>
+      </div>
+    )
 
-  const screenHeight = window.innerHeight;
+  const screenHeight = window.innerHeight
 
   return (
     <div className="relative h-screen overflow-hidden bg-black text-white">
@@ -251,7 +254,7 @@ export default function TwoPlayerPlay() {
       <div
         className={`absolute top-[35%] left-1/2 transform -translate-x-1/2 text-4xl font-bold drop-shadow transition-all duration-500 pointer-events-none z-20
           ${
-            visible1 ? "opacity-100 scale-150" : "opacity-0 scale-100"
+            visible1 ? 'opacity-100 scale-150' : 'opacity-0 scale-100'
           } ${judgementColor1}`}
       >
         {judgement1}
@@ -261,7 +264,7 @@ export default function TwoPlayerPlay() {
       <div
         className={`absolute top-[75%] left-1/2 transform -translate-x-1/2 text-4xl font-bold drop-shadow transition-all duration-500 pointer-events-none z-20
           ${
-            visible2 ? "opacity-100 scale-150" : "opacity-0 scale-100"
+            visible2 ? 'opacity-100 scale-150' : 'opacity-0 scale-100'
           } ${judgementColor2}`}
       >
         {judgement2}
@@ -280,14 +283,14 @@ export default function TwoPlayerPlay() {
         ))}
         {notes.p1
           .filter(
-            (n) =>
+            n =>
               !n.hit &&
               !n.missed &&
               Math.abs(n.time - time - offset) < WINDOW_SEC
           )
-          .map((n) => {
-            const p1CenterY = screenHeight / 4;
-            const yPos = p1CenterY + P1_LANE_Y_POS[n.lane];
+          .map(n => {
+            const p1CenterY = screenHeight / 4
+            const yPos = p1CenterY + P1_LANE_Y_POS[n.lane]
             return (
               <Note
                 key={n.id}
@@ -295,7 +298,7 @@ export default function TwoPlayerPlay() {
                 y={yPos}
                 lane={n.lane}
               />
-            );
+            )
           })}
       </div>
 
@@ -312,14 +315,14 @@ export default function TwoPlayerPlay() {
         ))}
         {notes.p2
           .filter(
-            (n) =>
+            n =>
               !n.hit &&
               !n.missed &&
               Math.abs(n.time - time - offset) < WINDOW_SEC
           )
-          .map((n) => {
-            const p2CenterY = screenHeight / 4;
-            const yPos = p2CenterY + P2_LANE_Y_POS[n.lane];
+          .map(n => {
+            const p2CenterY = screenHeight / 4
+            const yPos = p2CenterY + P2_LANE_Y_POS[n.lane]
             return (
               <Note
                 key={n.id}
@@ -327,7 +330,7 @@ export default function TwoPlayerPlay() {
                 y={yPos}
                 lane={n.lane}
               />
-            );
+            )
           })}
       </div>
 
@@ -345,5 +348,5 @@ export default function TwoPlayerPlay() {
         Back
       </button>
     </div>
-  );
+  )
 }
