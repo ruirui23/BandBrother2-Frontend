@@ -89,7 +89,7 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
       setGameState('playing')
       sound.seek(0)
       sound.play()
-      
+
       // オーディオコンテキストを有効化（ユーザーインタラクションが必要）
       console.log('Game started successfully! State set to playing.')
     }
@@ -109,15 +109,31 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
   // キー入力判定
   const handleKeyPress = useCallback(
     e => {
-      console.log('Key pressed:', e.code, 'Game state:', gameState, 'Started:', started, 'Valid key:', VALID_KEYS.includes(e.code))
-      
+      console.log(
+        'Key pressed:',
+        e.code,
+        'Game state:',
+        gameState,
+        'Started:',
+        started,
+        'Valid key:',
+        VALID_KEYS.includes(e.code)
+      )
+
       if (gameState !== 'playing' || !started || !VALID_KEYS.includes(e.code))
         return
 
       const lane = KEY_TO_LANE[e.code]
       const currentTime = time
-      
-      console.log('Looking for notes. Current time:', currentTime, 'Lane:', lane, 'Total notes:', notesRef.current.length)
+
+      console.log(
+        'Looking for notes. Current time:',
+        currentTime,
+        'Lane:',
+        lane,
+        'Total notes:',
+        notesRef.current.length
+      )
 
       // 押されたキーに対応するレーンの中で、最も判定ラインに近いノーツを探す
       let bestMatchIndex = -1
@@ -149,12 +165,12 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
         add('good')
         console.log('Good hit!')
       }
-      
+
       // ノーツヒット音を再生
       console.log('About to call playHitSound...')
       playHitSound()
       console.log('Called playHitSound')
-      
+
       note.hit = true
       setNotes([...notesRef.current]) // Force re-render
     },
@@ -164,12 +180,12 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
   // キーイベントリスナー
   useEffect(() => {
     console.log('Setting up key event listener...')
-    
-    const keyHandler = (e) => {
+
+    const keyHandler = e => {
       console.log('Global key pressed:', e.code)
       handleKeyPress(e)
     }
-    
+
     window.addEventListener('keydown', keyHandler)
     return () => {
       console.log('Removing key event listener...')

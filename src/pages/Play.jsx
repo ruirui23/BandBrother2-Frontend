@@ -174,10 +174,10 @@ export default function Play() {
         showJudgement('Good')
         setJudgementColor('text-orange-500')
       }
-      
+
       // ノーツヒット音を再生
       playHitSound()
-      
+
       note.hit = true
       setTime(currentTime) // Force re-render
     },

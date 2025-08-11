@@ -6,7 +6,7 @@ const HIT_SOUND_FILES = [
   '/audio/don.mp3',
   '/audio/pon.mp3',
   '/audio/po.mp3',
-  '/audio/pa.mp3'
+  '/audio/pa.mp3',
 ]
 
 // サウンドエフェクトプレイヤークラス
@@ -21,7 +21,7 @@ class SoundEffectPlayer {
   init() {
     console.log('Initializing sound effects...')
     console.log('Trying HIT_SOUND_FILES:', HIT_SOUND_FILES)
-    
+
     this.tryLoadSound(0)
   }
 
@@ -47,7 +47,7 @@ class SoundEffectPlayer {
         onloaderror: (id, error) => {
           console.warn(`Failed to load ${soundFile}:`, error)
           this.tryLoadSound(index + 1) // 次のファイルを試す
-        }
+        },
       })
     } catch (error) {
       console.warn(`Failed to initialize ${soundFile}:`, error)
@@ -64,7 +64,7 @@ class SoundEffectPlayer {
   playHitSound() {
     console.log('Attempting to play hit sound effect')
     console.log(`Enabled: ${this.enabled}, Initialized: ${this.initialized}`)
-    
+
     if (!this.enabled || !this.initialized || !this.hitSound) {
       console.log('Hit sound effect not available')
       return
@@ -75,7 +75,7 @@ class SoundEffectPlayer {
       if (this.hitSound.playing()) {
         this.hitSound.stop()
       }
-      
+
       // 音量を最大に設定して再生
       this.hitSound.volume(1.0)
       this.hitSound.play()
@@ -106,7 +106,7 @@ export const soundEffectPlayer = new SoundEffectPlayer()
 // デバッグ用にwindowオブジェクトに登録
 if (typeof window !== 'undefined') {
   window.soundEffectPlayer = soundEffectPlayer
-  
+
   // 簡単なテスト用グローバル関数
   window.testHitSound = () => {
     console.log('Testing hit sound...')
