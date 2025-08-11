@@ -14,7 +14,7 @@ export default function TwoPlayerSelect() {
   const [loadingCharts, setLoadingCharts] = useState(false)
   const [error, setError] = useState(null)
   const [c1, setC1] = useState(null)
-  const [c2, setC2] = useState(null)
+  const [_C2, setC2] = useState(null)
 
   useEffect(() => {
     if (showCustom) {
@@ -52,7 +52,7 @@ export default function TwoPlayerSelect() {
     }
   }, [showCustom])
 
-  const handleShowCustom = () => {
+  const _HANDLE_SHOW_CUSTOM = () => {
     setC1(null)
     setC2(null)
     setShowCustom(true)

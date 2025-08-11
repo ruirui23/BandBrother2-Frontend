@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Howl } from 'howler'
 import { useScore } from '../store'
 import useGameLoop from './useGameLoop'
@@ -21,7 +21,7 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
   // songDataの構造を安全にチェック
   const difficulties = songData?.difficulty || {}
   const diffObj = difficulties[difficulty] || difficulties.Easy || { notes: [] }
-  const rawNotes = diffObj.notes ?? songData?.notes ?? []
+  const rawNotes = useMemo(() => diffObj.notes ?? songData?.notes ?? [], [diffObj.notes, songData?.notes])
   const offset = songData?.offset ?? 0
 
   const notesRef = useRef([])
@@ -63,12 +63,12 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
         sound.unload()
       }
     }
-  }, [songData?.audio])
+  }, [songData?.audio, sound])
 
   // ゲーム初期化
   useEffect(() => {
     reset()
-  }, [])
+  }, [reset])
 
   // ゲームループ
   useGameLoop(() => {

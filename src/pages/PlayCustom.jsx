@@ -40,7 +40,7 @@ export default function PlayCustom() {
   /* ---------- 判定表示 ---------- */
   const [judgement, setJudgement] = useState('')
   const [visible, setVisible] = useState(false)
-  const [animating, setAnimating] = useState(false)
+  const [_ANIMATING, _SET_ANIMATING] = useState(false)
   const timeoutRef = useRef(null)
   const [judgementColor, setJudgementColor] = useState('text-yellow-400')
 
@@ -80,7 +80,7 @@ export default function PlayCustom() {
             setTimeout(() => nav('/result', { state: scoreRef.current }), 500)
           },
         })
-      } catch (e) {
+      } catch {
         setError('譜面データの取得に失敗しました。')
         setLoading(false)
       }
@@ -133,7 +133,7 @@ export default function PlayCustom() {
 
     setTimeout(() => {
       setVisible(false)
-      setAnimating(false)
+      _SET_ANIMATING(false)
     }, 500) // 0.5秒で消す
   }
 

@@ -54,13 +54,13 @@ export default function TwoPlayerPlayCustom() {
   /*一人目の判定表示用*/
   const [judgement1, setJudgement1] = useState('')
   const [visible1, setVisible1] = useState(false)
-  const [animating1, setAnimating1] = useState(false)
+  const [_ANIMATING1, setAnimating1] = useState(false)
   const timeoutRef1 = useRef(null)
   const [judgementColor1, setJudgementColor1] = useState('text-yellow-400')
   /*二人目の判定表示用*/
   const [judgement2, setJudgement2] = useState('')
   const [visible2, setVisible2] = useState(false)
-  const [animating2, setAnimating2] = useState(false)
+  const [_ANIMATING2, setAnimating2] = useState(false)
   const timeoutRef2 = useRef(null)
   const [judgementColor2, setJudgementColor2] = useState('text-yellow-400')
 
@@ -281,7 +281,7 @@ export default function TwoPlayerPlayCustom() {
 
   useEffect(() => {
     if (loading) return
-    const onFirstKey = e => {
+    const onFirstKey = () => {
       if (!soundRef.current?.playing()) {
         soundRef.current?.play()
         setStarted(true)
@@ -311,7 +311,7 @@ export default function TwoPlayerPlayCustom() {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-black text-white text-center">
         <div className="text-2xl mb-4">
-          １Pは上のレーンからQ，W，E，Rキー　２PはU，I，O，Pキーを押してプレイしてね
+          1Pは上のレーンからQ，W，E，Rキー 2PはU，I，O，Pキーを押してプレイしてね
         </div>
         <div className="text-xl text-gray-300">タップしてスタート</div>
       </div>
