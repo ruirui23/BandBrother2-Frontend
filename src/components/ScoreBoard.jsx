@@ -1,7 +1,7 @@
-import { useScore } from '../store'
+import { useScore } from '../store';
 
 export default function ScoreBoard() {
-  const { counts, score } = useScore()
+  const { counts, score } = useScore();
 
   return (
     <div className="absolute top-4 right-4 text-white text-lg space-y-1">
@@ -11,5 +11,5 @@ export default function ScoreBoard() {
       <hr className="my-1 border-gray-600" />
       <div className="text-xl font-bold">Score: {score}</div>
     </div>
-  )
+  );
 }

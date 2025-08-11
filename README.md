@@ -47,7 +47,6 @@ https://topaz.dev/projects/1b35d74c2c47694f4ccf
   - gorilla/websocket v1.5.3
 - PostgreSQL (ユーザー、ルーム、対戦履歴)
 - Redis (マッチングキュー)
-
 ### インフラ
 
 - Terraform
@@ -55,7 +54,7 @@ https://topaz.dev/projects/1b35d74c2c47694f4ccf
 - GoogleCloud
   - CloudRun(Rails Goサーバー)
   - CloudSQL (PostgreSQL)
-  - Memorystore (Redis)
+  -  Memorystore (Redis)
 - firebase
   - Authentication　（認証）
   - Firestore Database （譜面データ）

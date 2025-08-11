@@ -1,78 +1,71 @@
-import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { auth, db } from '../firebase'
-import { collection, getDocs, query, orderBy } from 'firebase/firestore'
-import {
-  FaPlay,
-  FaMusic,
-  FaClock,
-  FaUser,
-  FaSyncAlt,
-  FaUsers,
-} from 'react-icons/fa'
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { auth, db } from '../firebase';
+import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { FaPlay, FaMusic, FaClock, FaUser, FaSyncAlt, FaUsers } from 'react-icons/fa';
 
 export default function CustomCharts() {
-  const [charts, setCharts] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const navigate = useNavigate()
+  const [charts, setCharts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   const fetchCharts = async () => {
     try {
-      setLoading(true)
-      setError(null)
-
+      setLoading(true);
+      setError(null);
+      
       // 全ての譜面を作成日時の降順で取得
-      const q = query(collection(db, 'charts'), orderBy('createdAt', 'desc'))
-      const querySnapshot = await getDocs(q)
+      const q = query(collection(db, 'charts'), orderBy('createdAt', 'desc'));
+      const querySnapshot = await getDocs(q);
       const chartsData = querySnapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data(),
-      }))
-
-      setCharts(chartsData)
+        ...doc.data()
+      }));
+      
+      setCharts(chartsData);
     } catch (err) {
-      console.error('譜面の取得に失敗しました:', err)
-      setError('譜面の取得に失敗しました。')
+      console.error('譜面の取得に失敗しました:', err);
+      setError('譜面の取得に失敗しました。');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchCharts()
-  }, [])
+    fetchCharts();
+  }, []);
 
-  const playChart = chartId => {
-    navigate(`/play/custom/${chartId}`)
-  }
+  const playChart = (chartId) => {
+    navigate(`/play/custom/${chartId}`);
+  };
 
-  const playTwoPlayerChart = chartId => {
-    navigate(`/twoplayer/play/custom/${chartId}`)
-  }
+  const playTwoPlayerChart = (chartId) => {
+    navigate(`/twoplayer/play/custom/${chartId}`);
+  };
 
-  const formatDate = timestamp => {
-    if (!timestamp) return '不明'
+  const formatDate = (timestamp) => {
+    if (!timestamp) return '不明';
     try {
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
-      return date.toLocaleDateString('ja-JP')
+      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      return date.toLocaleDateString('ja-JP');
     } catch {
-      return '不明'
+      return '不明';
     }
-  }
+  };
 
-  const getCreatorDisplay = createdBy => {
-    if (!createdBy) return '不明'
-    if (createdBy === auth.currentUser?.uid) return '自分'
-    return createdBy.substring(0, 8) + '...'
-  }
+  const getCreatorDisplay = (createdBy) => {
+    if (!createdBy) return '不明';
+    if (createdBy === auth.currentUser?.uid) return '自分';
+    return createdBy.substring(0, 8) + '...';
+  };
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-blue-900">
         <div className="text-white text-2xl">譜面を読み込み中...</div>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -86,7 +79,7 @@ export default function CustomCharts() {
           <FaSyncAlt /> 再試行
         </button>
       </div>
-    )
+    );
   }
 
   return (
@@ -119,7 +112,7 @@ export default function CustomCharts() {
           </div>
         ) : (
           <div className="grid gap-4">
-            {charts.map(chart => (
+            {charts.map((chart) => (
               <div
                 key={chart.id}
                 className="bg-white/10 rounded-xl p-6 shadow-lg hover:bg-white/15 transition-colors"
@@ -144,9 +137,9 @@ export default function CustomCharts() {
                       </div>
                     </div>
                     <div className="mt-2 text-xs text-gray-400">
-                      音源: {chart.audioTitle || '不明'} | 作成日:{' '}
-                      {formatDate(chart.createdAt)} | ノーツ数:{' '}
-                      {chart.notes?.length || 0}
+                      音源: {chart.audioTitle || '不明'} | 
+                      作成日: {formatDate(chart.createdAt)} |
+                      ノーツ数: {chart.notes?.length || 0}
                     </div>
                   </div>
                   <div className="flex flex-col gap-2 ml-4">
@@ -170,5 +163,5 @@ export default function CustomCharts() {
         )}
       </div>
     </div>
-  )
+  );
 }

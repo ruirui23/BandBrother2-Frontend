@@ -1,6 +1,6 @@
-import React from 'react'
+import React from 'react';
 
-const NOTE_SIZE = 64 // 判定枠(64px)に合わせる
+const NOTE_SIZE = 64; // 判定枠(64px)に合わせる
 
 // レーンごとの色を定義
 const LANE_COLORS = {
@@ -24,13 +24,13 @@ const LANE_COLORS = {
     gradient: 'radial-gradient(circle at 60% 40%, #D2FFD2 40%, #7CFC00 100%)',
     border: '4px solid #32CD32',
   },
-}
+};
 
 const Note = ({ x, y, lane = 0 }) => {
   // laneを確実に数値として扱う
-  const laneIndex = parseInt(lane, 10) || 0
-  const colors = LANE_COLORS[laneIndex] || LANE_COLORS[0]
-
+  const laneIndex = parseInt(lane, 10) || 0;
+  const colors = LANE_COLORS[laneIndex] || LANE_COLORS[0];
+  
   return (
     <div
       style={{
@@ -45,7 +45,7 @@ const Note = ({ x, y, lane = 0 }) => {
         zIndex: 10,
       }}
     />
-  )
-}
+  );
+};
 
-export default React.memo(Note)
+export default React.memo(Note);
