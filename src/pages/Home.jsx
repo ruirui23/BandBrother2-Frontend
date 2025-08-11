@@ -7,7 +7,6 @@ import {
   signInWithPopup,
   onAuthStateChanged,
   createUserWithEmailAndPassword,
-  fetchSignInMethodsForEmail,
 } from 'firebase/auth'
 import { useNavigate } from 'react-router-dom'
 import {

@@ -146,7 +146,7 @@ export default function ChartEditor() {
   const [customAudioFile, setCustomAudioFile] = useState(null)
   const [uploadedAudioUrl, setUploadedAudioUrl] = useState('')
   const [isUploading, setIsUploading] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState(0)
+  const [_UPLOAD_PROGRESS, _SET_UPLOAD_PROGRESS] = useState(0)
 
   const [editingChartId, setEditingChartId] = useState(null)
   const [userCharts, setUserCharts] = useState([])
@@ -282,7 +282,7 @@ export default function ChartEditor() {
     }
 
     setIsUploading(true)
-    setUploadProgress(0)
+    _SET_UPLOAD_PROGRESS(0)
     setCustomAudioFile(file)
 
     try {
@@ -383,12 +383,12 @@ export default function ChartEditor() {
     }
   }
 
-  const handleTimeUpdate = () => {
+  const handleTimeUpdate = useCallback(() => {
     if (audioRef.current) {
       setCurrentTime(audioRef.current.currentTime)
       updateScrollPosition(audioRef.current.currentTime)
     }
-  }
+  }, [updateScrollPosition])
 
   useEffect(() => {
     const audio = audioRef.current
@@ -403,7 +403,7 @@ export default function ChartEditor() {
         audio.removeEventListener('timeupdate', handleTimeUpdate)
       }
     }
-  }, [selectedSong, updateScrollPosition])
+  }, [selectedSong, updateScrollPosition, handleTimeUpdate])
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-black via-gray-900 to-blue-900 text-white p-4">

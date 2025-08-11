@@ -33,7 +33,6 @@ export default function Play() {
 
   /* ---------- 曲・譜面データ ---------- */
   const diffObj = song.difficulty[difficulty] || song.difficulty.Easy
-  const rawNotes = diffObj.notes ?? []
   const offset = song.offset ?? 0 // undefined → 0
 
   const notesRef = useRef([])
@@ -46,7 +45,7 @@ export default function Play() {
   /* ---------- 判定表示 ---------- */
   const [judgement, setJudgement] = useState('')
   const [visible, setVisible] = useState(false)
-  const [animating, setAnimating] = useState(false)
+  const [_ANIMATING, _SET_ANIMATING] = useState(false)
   const timeoutRef = useRef(null)
   const [judgementColor, setJudgementColor] = useState('text-yellow-400')
 
@@ -88,7 +87,7 @@ export default function Play() {
   useEffect(() => {
     if (!isSoundLoaded || !soundRef.current) return
 
-    const onFirstKey = e => {
+    const onFirstKey = () => {
       if (!soundRef.current.playing()) {
         soundRef.current.play()
         setStarted(true)
@@ -129,7 +128,7 @@ export default function Play() {
 
     setTimeout(() => {
       setVisible(false)
-      setAnimating(false)
+      _SET_ANIMATING(false)
     }, 500) // 0.5秒で消す
   }
 

@@ -1,5 +1,5 @@
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { auth, db } from '../firebase'
 import { onAuthStateChanged } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
@@ -20,7 +20,7 @@ export default function MultiPlay() {
   const [loading, setLoading] = useState(false)
 
   // location.stateから楽曲データを取得
-  const musicData = location.state || {}
+  const musicData = useMemo(() => location.state || {}, [location.state])
 
   // WebSocket接続
   const wsRef = useRef(null)
@@ -164,48 +164,51 @@ export default function MultiPlay() {
   }, [gameStartSignal, rhythmGame])
 
   // バックエンドにスコアを送信
-  const sendScoreToBackend = async (finalScore, isWin) => {
-    const scoreData = {
-      uid: user.uid,
-      room_id: parseInt(roomId),
-      score: Math.max(0, finalScore), // 負のスコアを0にする
-      is_win: isWin,
-    }
-
-    console.log('送信データ:', scoreData)
-
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_RAILS_URL}/api/scores`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(scoreData),
-          credentials: 'include',
-        }
-      )
-
-      if (response.ok) {
-        const data = await response.json()
-        console.log('スコア送信成功:', data)
-        if (data.highscore_updated) {
-          console.log('🎉 ハイスコア更新！新記録:', data.current_highscore)
-        } else {
-          console.log(
-            'ハイスコア更新なし。現在のハイスコア:',
-            data.current_highscore
-          )
-        }
-      } else {
-        const errorData = await response.json()
-        console.error('スコア送信失敗:', response.status, errorData)
+  const sendScoreToBackend = useCallback(
+    async (finalScore, isWin) => {
+      const scoreData = {
+        uid: user.uid,
+        room_id: parseInt(roomId),
+        score: Math.max(0, finalScore), // 負のスコアを0にする
+        is_win: isWin,
       }
-    } catch (error) {
-      console.error('スコア送信エラー:', error)
-    }
-  }
+
+      console.log('送信データ:', scoreData)
+
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_RAILS_URL}/api/scores`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(scoreData),
+            credentials: 'include',
+          }
+        )
+
+        if (response.ok) {
+          const data = await response.json()
+          console.log('スコア送信成功:', data)
+          if (data.highscore_updated) {
+            console.log('🎉 ハイスコア更新！新記録:', data.current_highscore)
+          } else {
+            console.log(
+              'ハイスコア更新なし。現在のハイスコア:',
+              data.current_highscore
+            )
+          }
+        } else {
+          const errorData = await response.json()
+          console.error('スコア送信失敗:', response.status, errorData)
+        }
+      } catch (error) {
+        console.error('スコア送信エラー:', error)
+      }
+    },
+    [user, roomId]
+  )
 
   // ゲーム結果の処理
   useEffect(() => {
@@ -235,7 +238,7 @@ export default function MultiPlay() {
       })
       setGameResultData(null)
     }
-  }, [gameResultData, rhythmGame, navigate, user, roomId])
+  }, [gameResultData, rhythmGame, navigate, user, roomId, sendScoreToBackend])
 
   // スコア更新時に相手に送信
   useEffect(() => {

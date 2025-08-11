@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import song from '../data/tutorial.json'
 import { useEffect, useState } from 'react'
 import { db, auth } from '../firebase'
@@ -7,8 +7,8 @@ import { collection, getDocs, query, where } from 'firebase/firestore'
 export default function SelectDifficulty() {
   const nav = useNavigate()
   const diffs = Object.keys(song.difficulty)
-  const [customCharts, setCustomCharts] = useState([])
-  const [showCustom, setShowCustom] = useState(false)
+  const [_CUSTOM_CHARTS, setCustomCharts] = useState([])
+  const [_SHOW_CUSTOM, _SET_SHOW_CUSTOM] = useState(false)
 
   useEffect(() => {
     // Firebaseからカスタム譜面を取得（ログインユーザーのみ）
@@ -26,7 +26,7 @@ export default function SelectDifficulty() {
       setCustomCharts(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })))
     }
     fetchCharts()
-  }, [auth.currentUser])
+  }, [])
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-black via-gray-900 to-blue-900 gap-6">
@@ -39,7 +39,7 @@ export default function SelectDifficulty() {
       <h2 className="text-3xl font-bold mb-6 text-white drop-shadow">
         難易度を選択
       </h2>
-      {!showCustom && (
+      {!_SHOW_CUSTOM && (
         <div className="flex flex-col gap-4 w-full max-w-xs">
           {diffs.map((d, i) => (
             <button
