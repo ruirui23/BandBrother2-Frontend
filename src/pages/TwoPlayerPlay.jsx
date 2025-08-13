@@ -276,8 +276,8 @@ export default function TwoPlayerPlay() {
         {P1_LANE_Y_POS.map((y, index) => (
           <div
             key={`p1-hl-${index}`}
-            style={{ top: `calc(50% + ${y}px)` }}
-            className="absolute left-0 right-0 transform -translate-y-1/2"
+            style={{ top: `calc(50% + ${y}px)`, left: `${HIT_X -48}px` }}
+            className="absolute transform -translate-y-1/2"
           >
             <HitLine lane={index} />
           </div>
@@ -308,8 +308,8 @@ export default function TwoPlayerPlay() {
         {P2_LANE_Y_POS.map((y, index) => (
           <div
             key={`p2-hl-${index}`}
-            style={{ top: `calc(50% + ${y}px)` }}
-            className="absolute left-0 right-0 transform -translate-y-1/2"
+            style={{ top: `calc(50% + ${y}px)`, left: `${HIT_X - 48}px` }}
+            className="absolute transform -translate-y-1/2"
           >
             <HitLine lane={index} />
           </div>
