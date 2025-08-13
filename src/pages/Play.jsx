@@ -4,11 +4,13 @@ import { useEffect, useState, useRef } from 'react'
 import song from '../data/tutorial.json'
 import useGameCore from '../hooks/useGameCore'
 import { HIT_X, NOTE_SPEED } from '../constants'
+import { useGameLayout } from '../store.js'
+
 import Note from '../components/Note'
 import HitLine from '../components/HitLine'
 
 // レーンのY座標を定義
-const LANE_Y_POSITIONS = [-96, -32, 32, 96]
+const LANE_X_POSITIONS = [-96, -32, 32, 96]
 
 export default function Play() {
   /* ---------- URL パラメータ ---------- */
@@ -45,16 +47,6 @@ export default function Play() {
   useEffect(() => {
     scoreRef.current = { counts, score }
   }, [counts, score])
-
-  // 音声読み込み状態
-  const [isSoundLoaded, setIsSoundLoaded] = useState(false)
-
-  // 音声読み込み状態の監視
-  useEffect(() => {
-    if (sound) {
-      setIsSoundLoaded(true)
-    }
-  }, [sound])
 
   // 最初のキー入力でゲーム開始
   useEffect(() => {
@@ -97,25 +89,14 @@ export default function Play() {
     })
   }, [setOnJudgment])
 
-  const screenCenterY =
-    typeof window !== 'undefined' ? window.innerHeight / 2 : 0
-
-  /* ---------- 描画 ---------- */
-  if (!isSoundLoaded || !sound)
-    return (
-      <div className="flex items-center justify-center h-screen bg-black text-white text-2xl">
-        Loading...
-      </div>
-    )
-  if (!started)
-    return (
-      <div className="flex flex-col items-center justify-center h-screen bg-black text-white text-center">
-        <div className="text-2xl mb-4">
-          上のレーンからD，F，J，Kを押してプレイしてね
-        </div>
-        <div className="text-xl text-gray-300">タップしてスタート</div>
-      </div>
-    )
+  const { isVertical } = useGameLayout();
+  // 画面サイズ・判定枠座標
+  const screenHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
+  const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 600;
+  const HIT_Y = screenHeight - 120;
+  const HIT_X = 160;
+  const circleSize = 64;
+  const yPos = HIT_Y - circleSize / 4;
 
   return (
     <div className="relative h-screen overflow-hidden bg-black">
@@ -125,47 +106,71 @@ export default function Play() {
       >
         Back
       </button>
-      <div className="relative w-full h-screen bg-black overflow-hidden">
-        {/* 判定表示（中央） */}
-        <div
-          className={`absolute top-[40%] left-1/2 transform -translate-x-1/2 text-4xl font-bold drop-shadow transition-all duration-500 pointer-events-none
-          ${
-            visible ? 'opacity-100 scale-150' : 'opacity-0 scale-100'
-          } ${judgementColor}`}
-        >
-          {judgement}
-        </div>
-        {/* スコア表示 */}
-        <div className="absolute left-4 top-16 text-xl text-white">
-          Score: {score}
-        </div>
-
-        {/* 4本の判定ライン */}
-        {LANE_Y_POSITIONS.map((y, index) => (
-          <div
-            key={index}
-            style={{ top: `calc(50% + ${y}px)` }}
-            className="absolute left-0 right-0 transform -translate-y-1/2"
-          >
-            <HitLine lane={index} />
-          </div>
-        ))}
-      </div>
-
       {/* スコア表示 */}
-
+      <div className="absolute left-4 top-16 text-xl text-white">
+        Score: {score}
+      </div>
+      {/* 判定ライン・ノーツ描画 */}
+      {isVertical ? (
+        // 縦画面（上から下）
+        <div
+          className="absolute flex justify-center w-full"
+          style={{ top: `${yPos}px`, pointerEvents: 'none' }}
+        >
+          <div style={{ display: 'flex' }}>
+            {[0,1,2,3].map(index => (
+              <HitLine key={index} yOffset={0} />
+            ))}
+          </div>
+        </div>
+      ) : (
+        // 横画面（右から左）
+        <div
+          className="absolute flex flex-col items-center"
+          style={{
+            left: `${circleSize * 2}px`, // 〇2つ分右にずらす
+            top: `${screenHeight / 2 - (circleSize * 2)}px`,
+            height: `${circleSize * 4}px`,
+            pointerEvents: 'none',
+          }}
+        >
+          {[0,1,2,3].map((lane, idx) => (
+            <HitLine key={idx} yOffset={0} />
+          ))}
+        </div>
+      )}
       {/* ノーツ表示 */}
       {visibleNotes.map(n => {
-        const yPos = screenCenterY + LANE_Y_POSITIONS[n.lane || 0]
-        return (
-          <Note
-            key={n.id}
-            x={HIT_X + (n.time - time - offset) * NOTE_SPEED}
-            y={yPos}
-            lane={n.lane || 0}
-          />
-        )
+        if (isVertical) {
+          // 上から下
+          const xPos = screenWidth / 2 + LANE_X_POSITIONS[n.lane || 0];
+          return (
+            <Note
+              key={n.id}
+              x={xPos}
+              y={HIT_Y - (n.time - time - offset) * NOTE_SPEED}
+              lane={n.lane || 0}
+            />
+          );
+        } else {
+          // 右から左
+          const yPos = screenHeight / 2 + LANE_X_POSITIONS[n.lane || 0];
+          return (
+            <Note
+              key={n.id}
+              x={HIT_X + (n.time - time - offset) * NOTE_SPEED}
+              y={yPos}
+              lane={n.lane || 0}
+            />
+          );
+        }
       })}
+      {/* 判定表示（画面中央） */}
+      <div
+        className={`absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-4xl font-bold drop-shadow transition-all duration-500 pointer-events-none ${visible ? 'opacity-100 scale-150' : 'opacity-0 scale-100'} ${judgementColor}`}
+      >
+        {judgement}
+      </div>
     </div>
-  )
+  );
 }

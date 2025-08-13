@@ -1,5 +1,10 @@
 import { create } from 'zustand'
 
+export const useGameLayout = create(set => ({
+  isVertical: false,
+  toggleDirection: () => set(state => ({ isVertical: !state.isVertical })),
+}))
+
 export const useScore = create(set => ({
   // 判定ごとの回数
   counts: { perfect: 0, good: 0, miss: 0 },
