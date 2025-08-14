@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { Howl } from 'howler'
 import { db } from '../firebase'
 import { doc, getDoc } from 'firebase/firestore'
-import { useScore } from '../store'
+import { useScore, useGameLayout } from '../store'
 import useGameLoop from '../hooks/useGameLoop'
 import { HIT_X, NOTE_SPEED, WINDOW_SEC } from '../constants'
 import Note from '../components/Note'
@@ -24,6 +24,7 @@ const KEY_TO_LANE = {
 const VALID_KEYS = Object.keys(KEY_TO_LANE)
 
 export default function PlayCustom() {
+  const { isVertical } = useGameLayout()
   const { chartId } = useParams()
   const nav = useNavigate()
   const { add, reset, counts, score } = useScore()
@@ -196,9 +197,10 @@ export default function PlayCustom() {
   const visibleNotes = notesRef.current.filter(
     n => !n.hit && !n.missed && Math.abs(n.time - time) < WINDOW_SEC
   )
-
-  const screenCenterY =
-    typeof window !== 'undefined' ? window.innerHeight / 2 : 0
+  const screenHeight = typeof window !== 'undefined' ? window.innerHeight : 800
+  const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 600
+  const circleSize = 64
+  const yPos = screenHeight - 120 - circleSize / 4
 
   if (loading)
     return (
@@ -230,44 +232,65 @@ export default function PlayCustom() {
       >
         Back
       </button>
-
       {/* スコア表示 */}
       <div className="absolute left-4 top-16 text-xl text-white">
         Score: {score}
       </div>
-
-      <div className="relative w-full h-screen bg-black overflow-hidden">
-        {/* 判定表示（中央） */}
-        <div
-          className={`absolute top-[40%] left-1/2 transform -translate-x-1/2 text-4xl font-bold drop-shadow transition-all duration-500 pointer-events-none
-          ${
-            visible ? 'opacity-100 scale-150' : 'opacity-0 scale-100'
-          } ${judgementColor}`}
-        >
-          {judgement}
-        </div>
-        {LANE_Y_POSITIONS.map((y, index) => (
+      {/* 判定ライン・ノーツ描画 */}
+      {isVertical ? (
+        // 縦画面（上から下）
+        <>
           <div
-            key={index}
-            style={{ top: `calc(50% + ${y}px)` }}
-            className="absolute left-0 right-0 transform -translate-y-1/2"
+            className="absolute flex justify-center w-full"
+            style={{ top: `${yPos}px`, pointerEvents: 'none' }}
           >
-            <HitLine lane={index} />
+            <div style={{ display: 'flex' }}>
+              {[0, 1, 2, 3].map(index => (
+                <HitLine key={index} yOffset={0} />
+              ))}
+            </div>
           </div>
-        ))}
+          {visibleNotes.map(n => {
+            const xPos = screenWidth / 2 + LANE_Y_POSITIONS[n.lane || 0]
+            const y = screenHeight - 120 - (n.time - time) * NOTE_SPEED
+            return <Note key={n.id} x={xPos} y={y} lane={n.lane} />
+          })}
+        </>
+      ) : (
+        // 横画面（右から左）
+        <>
+          <div
+            className="absolute flex flex-col items-center"
+            style={{
+              left: `${circleSize * 2}px`,
+              top: `${screenHeight / 2 - circleSize * 2}px`,
+              height: `${circleSize * 4}px`,
+              pointerEvents: 'none',
+            }}
+          >
+            {[0, 1, 2, 3].map((lane, idx) => (
+              <HitLine key={idx} yOffset={0} />
+            ))}
+          </div>
+          {visibleNotes.map(n => {
+            const yPos = screenHeight / 2 + LANE_Y_POSITIONS[n.lane || 0]
+            return (
+              <Note
+                key={n.id}
+                x={HIT_X + (n.time - time) * NOTE_SPEED}
+                y={yPos}
+                lane={n.lane}
+              />
+            )
+          })}
+        </>
+      )}
+      {/* 判定表示（中央） */}
+      <div
+        className={`absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-4xl font-bold drop-shadow transition-all duration-500 pointer-events-none ${visible ? 'opacity-100 scale-150' : 'opacity-0 scale-100'} ${judgementColor}`}
+      >
+        {judgement}
       </div>
-
-      {visibleNotes.map(n => {
-        const yPos = screenCenterY + LANE_Y_POSITIONS[n.lane]
-        return (
-          <Note
-            key={n.id}
-            x={HIT_X + (n.time - time) * NOTE_SPEED}
-            y={yPos}
-            lane={n.lane}
-          />
-        )
-      })}
     </div>
   )
 }
