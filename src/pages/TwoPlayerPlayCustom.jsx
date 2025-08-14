@@ -4,6 +4,7 @@ import { Howl } from 'howler'
 import { db } from '../firebase'
 import { doc, getDoc } from 'firebase/firestore'
 import { HIT_X, NOTE_SPEED, WINDOW_SEC } from '../constants'
+import { useGameLayout } from '../store'
 import Note from '../components/Note'
 import HitLine from '../components/HitLine'
 import useGameLoop from '../hooks/useGameLoop'
@@ -24,6 +25,7 @@ const ALL_VALID_KEYS = [
 ]
 
 export default function TwoPlayerPlayCustom() {
+  const { isVertical } = useGameLayout()
   const { chartId } = useParams()
   const nav = useNavigate()
 
@@ -264,9 +266,23 @@ export default function TwoPlayerPlayCustom() {
       if (minDistance < JUDGE.perfect) {
         scoreRef.current.perfect++
         scoreRef.current.score += 5
+        if (isP1Key) {
+          showJudgement1('Perfect')
+          setJudgementColor1('text-yellow-400')
+        } else {
+          showJudgement2('Perfect')
+          setJudgementColor2('text-yellow-400')
+        }
       } else {
         scoreRef.current.good++
         scoreRef.current.score += 2
+        if (isP1Key) {
+          showJudgement1('Good')
+          setJudgementColor1('text-orange-500')
+        } else {
+          showJudgement2('Good')
+          setJudgementColor2('text-orange-500')
+        }
       }
 
       setNotes(prev => ({
@@ -319,7 +335,113 @@ export default function TwoPlayerPlayCustom() {
     )
 
   const screenHeight = window.innerHeight
+  const screenWidth = window.innerWidth
+  const LANE_X_POSITIONS = [-96, -32, 32, 96]
 
+  if (isVertical) {
+    // 1Pフィールド
+    const p1FieldLeft = 0
+    const p1FieldWidth = screenWidth / 2
+    const p1FieldCenterX = p1FieldLeft + p1FieldWidth / 2
+    // 2Pフィールド
+    const p2FieldLeft = screenWidth / 2
+    const p2FieldWidth = screenWidth / 2
+    const p2FieldCenterX = p2FieldLeft + p2FieldWidth / 2
+
+    return (
+      <div className="relative h-screen w-screen overflow-hidden bg-black text-white">
+        {/* 1P判定表示 */}
+        <div
+          className={`absolute left-[25%] top-[40%] -translate-x-1/2 text-4xl font-bold drop-shadow transition-all duration-500 pointer-events-none z-20
+            ${visible1 ? 'opacity-100 scale-150' : 'opacity-0 scale-100'} ${judgementColor1}`}
+        >
+          {judgement1}
+        </div>
+        {/* 2P判定表示 */}
+        <div
+          className={`absolute left-[75%] top-[40%] -translate-x-1/2 text-4xl font-bold drop-shadow transition-all duration-500 pointer-events-none z-20
+            ${visible2 ? 'opacity-100 scale-150' : 'opacity-0 scale-100'} ${judgementColor2}`}
+        >
+          {judgement2}
+        </div>
+        {/* 1P判定枠 */}
+        {P1_LANE_Y_POS.map((y, index) => (
+          <div
+            key={`p1-hl-v-${index}`}
+            style={{
+              left: `${p1FieldCenterX - 128 + index * 64}px`,
+              top: `${screenHeight - 120}px`,
+            }}
+            className="absolute"
+          >
+            <HitLine lane={index} />
+          </div>
+        ))}
+        {/* 2P判定枠 */}
+        {P2_LANE_Y_POS.map((y, index) => (
+          <div
+            key={`p2-hl-v-${index}`}
+            style={{
+              left: `${p2FieldCenterX - 128 + index * 64}px`,
+              top: `${screenHeight - 120}px`,
+            }}
+            className="absolute"
+          >
+            <HitLine lane={index} />
+          </div>
+        ))}
+        {/* 1Pノーツ */}
+        {notes.p1
+          .filter(
+            n =>
+              !n.hit &&
+              !n.missed &&
+              Math.abs(n.time - time - offset) < WINDOW_SEC
+          )
+          .map(n => (
+            <Note
+              key={n.id}
+              x={p1FieldCenterX - 96 + n.lane * 64}
+              y={screenHeight - 120 - (n.time - time - offset) * NOTE_SPEED}
+              lane={n.lane}
+            />
+          ))}
+        {/* 2Pノーツ */}
+        {notes.p2
+          .filter(
+            n =>
+              !n.hit &&
+              !n.missed &&
+              Math.abs(n.time - time - offset) < WINDOW_SEC
+          )
+          .map(n => (
+            <Note
+              key={n.id}
+              x={p2FieldCenterX - 96 + n.lane * 64}
+              y={screenHeight - 120 - (n.time - time - offset) * NOTE_SPEED}
+              lane={n.lane}
+            />
+          ))}
+        {/* スコア・戻るボタン */}
+        <div className="absolute left-4 top-4 text-xl">
+          1P: {p1ScoreRef.current.score}
+        </div>
+        <div className="absolute right-4 top-4 text-xl">
+          2P: {p2ScoreRef.current.score}
+        </div>
+        <button
+          className="absolute left-1/2 top-4 -translate-x-1/2 px-4 py-2 bg-gray-600 text-white rounded z-30"
+          onClick={() => nav(-1)}
+        >
+          Back
+        </button>
+        {/* 中央仕切り線 */}
+        <div className="absolute left-1/2 top-0 w-0.5 h-full bg-yellow-400 opacity-70 z-10" />
+      </div>
+    )
+  }
+
+  // 横画面（従来のUI）
   return (
     <div className="relative h-screen overflow-hidden bg-black text-white">
       {/* --- 1P判定表示（上画面中央） --- */}
@@ -346,7 +468,7 @@ export default function TwoPlayerPlayCustom() {
         {P1_LANE_Y_POS.map((y, index) => (
           <div
             key={`p1-hl-${index}`}
-            style={{ top: `calc(50% + ${y}px)` }}
+            style={{ top: `calc(50% + ${y}px)`, left: '128px', right: 0 }}
             className="absolute left-0 right-0 transform -translate-y-1/2"
           >
             <HitLine lane={index} />
@@ -378,8 +500,12 @@ export default function TwoPlayerPlayCustom() {
         {P2_LANE_Y_POS.map((y, index) => (
           <div
             key={`p2-hl-${index}`}
-            style={{ top: `calc(50% + ${y}px)` }}
-            className="absolute left-0 right-0 transform -translate-y-1/2"
+            style={{
+              top: `calc(50% + ${y}px)`,
+              left: '128px', // 右に2つ分(64*2)ずらす
+              right: 0,
+            }}
+            className="absolute transform -translate-y-1/2"
           >
             <HitLine lane={index} />
           </div>
