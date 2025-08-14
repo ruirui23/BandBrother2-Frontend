@@ -83,7 +83,13 @@ export default function Play() {
         showJudgement('Good')
         setJudgementColor('text-orange-500')
       } else if (judgmentType === 'miss') {
-        showJudgement('Mis  const { isVertical } = useGameLayout()
+        showJudgement('Miss')
+        setJudgementColor('text-blue-400')
+      }
+    })
+  }, [setOnJudgment])
+
+  const { isVertical } = useGameLayout()
   // 画面サイズ・判定枠座標
   const screenHeight = typeof window !== 'undefined' ? window.innerHeight : 800
   const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 600
@@ -167,10 +173,4 @@ export default function Play() {
       </div>
     </div>
   )
-ration-500 pointer-events-none ${visible ? 'opacity-100 scale-150' : 'opacity-0 scale-100'} ${judgementColor}`}
-      >
-        {judgement}
-      </div>
-    </div>
-  );
 }
