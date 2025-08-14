@@ -28,7 +28,7 @@ export default function TwoPlayerPlay() {
   const nav = useNavigate()
   const offset = songData.offset ?? 0
   // useGameLayoutを最上部で呼び出し
-  const { isVertical } = useGameLayout();
+  const { isVertical } = useGameLayout()
 
   const [notes, setNotes] = useState({ p1: [], p2: [] })
   const p1ScoreRef = useRef({ perfect: 0, good: 0, miss: 0, score: 0 })
@@ -384,7 +384,7 @@ export default function TwoPlayerPlay() {
         {P1_LANE_Y_POS.map((y, index) => (
           <div
             key={`p1-hl-${index}`}
-            style={{ top: `calc(50% + ${y}px)`, left: `${HIT_X -48}px` }}
+            style={{ top: `calc(50% + ${y}px)`, left: `${HIT_X - 48}px` }}
             className="absolute transform -translate-y-1/2"
           >
             <HitLine lane={index} />

@@ -89,14 +89,14 @@ export default function Play() {
     })
   }, [setOnJudgment])
 
-  const { isVertical } = useGameLayout();
+  const { isVertical } = useGameLayout()
   // 画面サイズ・判定枠座標
-  const screenHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
-  const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 600;
-  const HIT_Y = screenHeight - 120;
-  const HIT_X = 160;
-  const circleSize = 64;
-  const yPos = HIT_Y - circleSize / 4;
+  const screenHeight = typeof window !== 'undefined' ? window.innerHeight : 800
+  const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 600
+  const HIT_Y = screenHeight - 120
+  const HIT_X = 160
+  const circleSize = 64
+  const yPos = HIT_Y - circleSize / 4
 
   return (
     <div className="relative h-screen overflow-hidden bg-black">
@@ -118,7 +118,7 @@ export default function Play() {
           style={{ top: `${yPos}px`, pointerEvents: 'none' }}
         >
           <div style={{ display: 'flex' }}>
-            {[0,1,2,3].map(index => (
+            {[0, 1, 2, 3].map(index => (
               <HitLine key={index} yOffset={0} />
             ))}
           </div>
@@ -129,12 +129,12 @@ export default function Play() {
           className="absolute flex flex-col items-center"
           style={{
             left: `${circleSize * 2}px`, // 〇2つ分右にずらす
-            top: `${screenHeight / 2 - (circleSize * 2)}px`,
+            top: `${screenHeight / 2 - circleSize * 2}px`,
             height: `${circleSize * 4}px`,
             pointerEvents: 'none',
           }}
         >
-          {[0,1,2,3].map((lane, idx) => (
+          {[0, 1, 2, 3].map((lane, idx) => (
             <HitLine key={idx} yOffset={0} />
           ))}
         </div>
@@ -143,7 +143,7 @@ export default function Play() {
       {visibleNotes.map(n => {
         if (isVertical) {
           // 上から下
-          const xPos = screenWidth / 2 + LANE_X_POSITIONS[n.lane || 0];
+          const xPos = screenWidth / 2 + LANE_X_POSITIONS[n.lane || 0]
           return (
             <Note
               key={n.id}
@@ -151,10 +151,10 @@ export default function Play() {
               y={HIT_Y - (n.time - time - offset) * NOTE_SPEED}
               lane={n.lane || 0}
             />
-          );
+          )
         } else {
           // 右から左
-          const yPos = screenHeight / 2 + LANE_X_POSITIONS[n.lane || 0];
+          const yPos = screenHeight / 2 + LANE_X_POSITIONS[n.lane || 0]
           return (
             <Note
               key={n.id}
@@ -162,7 +162,7 @@ export default function Play() {
               y={yPos}
               lane={n.lane || 0}
             />
-          );
+          )
         }
       })}
       {/* 判定表示（画面中央） */}
@@ -172,5 +172,5 @@ export default function Play() {
         {judgement}
       </div>
     </div>
-  );
+  )
 }
