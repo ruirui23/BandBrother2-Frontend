@@ -266,9 +266,23 @@ export default function TwoPlayerPlayCustom() {
       if (minDistance < JUDGE.perfect) {
         scoreRef.current.perfect++
         scoreRef.current.score += 5
+        if (isP1Key) {
+          showJudgement1('Perfect')
+          setJudgementColor1('text-yellow-400')
+        } else {
+          showJudgement2('Perfect')
+          setJudgementColor2('text-yellow-400')
+        }
       } else {
         scoreRef.current.good++
         scoreRef.current.score += 2
+        if (isP1Key) {
+          showJudgement1('Good')
+          setJudgementColor1('text-orange-500')
+        } else {
+          showJudgement2('Good')
+          setJudgementColor2('text-orange-500')
+        }
       }
 
       setNotes(prev => ({
