@@ -25,7 +25,7 @@ const ALL_VALID_KEYS = [
 ]
 
 export default function TwoPlayerPlayCustom() {
-  const { isVertical } = useGameLayout();
+  const { isVertical } = useGameLayout()
   const { chartId } = useParams()
   const nav = useNavigate()
 
@@ -320,20 +320,19 @@ export default function TwoPlayerPlayCustom() {
       </div>
     )
 
-
-  const screenHeight = window.innerHeight;
-  const screenWidth = window.innerWidth;
-  const LANE_X_POSITIONS = [-96, -32, 32, 96];
+  const screenHeight = window.innerHeight
+  const screenWidth = window.innerWidth
+  const LANE_X_POSITIONS = [-96, -32, 32, 96]
 
   if (isVertical) {
     // 1Pフィールド
-    const p1FieldLeft = 0;
-    const p1FieldWidth = screenWidth / 2;
-    const p1FieldCenterX = p1FieldLeft + p1FieldWidth / 2;
+    const p1FieldLeft = 0
+    const p1FieldWidth = screenWidth / 2
+    const p1FieldCenterX = p1FieldLeft + p1FieldWidth / 2
     // 2Pフィールド
-    const p2FieldLeft = screenWidth / 2;
-    const p2FieldWidth = screenWidth / 2;
-    const p2FieldCenterX = p2FieldLeft + p2FieldWidth / 2;
+    const p2FieldLeft = screenWidth / 2
+    const p2FieldWidth = screenWidth / 2
+    const p2FieldCenterX = p2FieldLeft + p2FieldWidth / 2
 
     return (
       <div className="relative h-screen w-screen overflow-hidden bg-black text-white">
@@ -425,7 +424,7 @@ export default function TwoPlayerPlayCustom() {
         {/* 中央仕切り線 */}
         <div className="absolute left-1/2 top-0 w-0.5 h-full bg-yellow-400 opacity-70 z-10" />
       </div>
-    );
+    )
   }
 
   // 横画面（従来のUI）
@@ -455,7 +454,7 @@ export default function TwoPlayerPlayCustom() {
         {P1_LANE_Y_POS.map((y, index) => (
           <div
             key={`p1-hl-${index}`}
-            style={{ top: `calc(50% + ${y}px)` , left: '128px', right: 0 }}
+            style={{ top: `calc(50% + ${y}px)`, left: '128px', right: 0 }}
             className="absolute left-0 right-0 transform -translate-y-1/2"
           >
             <HitLine lane={index} />
@@ -469,8 +468,8 @@ export default function TwoPlayerPlayCustom() {
               Math.abs(n.time - time - offset) < WINDOW_SEC
           )
           .map(n => {
-            const p1CenterY = screenHeight / 4;
-            const yPos = p1CenterY + P1_LANE_Y_POS[n.lane];
+            const p1CenterY = screenHeight / 4
+            const yPos = p1CenterY + P1_LANE_Y_POS[n.lane]
             return (
               <Note
                 key={n.id}
@@ -478,7 +477,7 @@ export default function TwoPlayerPlayCustom() {
                 y={yPos}
                 lane={n.lane}
               />
-            );
+            )
           })}
       </div>
 
@@ -490,7 +489,7 @@ export default function TwoPlayerPlayCustom() {
             style={{
               top: `calc(50% + ${y}px)`,
               left: '128px', // 右に2つ分(64*2)ずらす
-              right: 0
+              right: 0,
             }}
             className="absolute transform -translate-y-1/2"
           >
@@ -505,8 +504,8 @@ export default function TwoPlayerPlayCustom() {
               Math.abs(n.time - time - offset) < WINDOW_SEC
           )
           .map(n => {
-            const p2CenterY = screenHeight / 4;
-            const yPos = p2CenterY + P2_LANE_Y_POS[n.lane];
+            const p2CenterY = screenHeight / 4
+            const yPos = p2CenterY + P2_LANE_Y_POS[n.lane]
             return (
               <Note
                 key={n.id}
@@ -514,7 +513,7 @@ export default function TwoPlayerPlayCustom() {
                 y={yPos}
                 lane={n.lane}
               />
-            );
+            )
           })}
       </div>
 
@@ -535,5 +534,5 @@ export default function TwoPlayerPlayCustom() {
         Back
       </button>
     </div>
-  );
+  )
 }
