@@ -14,12 +14,11 @@ function getSelectedSEFile() {
   try {
     const se = localStorage.getItem('seFileName')
     if (se && ALL_SE_FILES.includes(se)) return se
-  } catch {
   } catch (error) {
+    // 取得できなかった場合デフォルト値を使用
     console.warn('Failed to get SE file from localStorage:', error)
     return '/audio/po.mp3'
   }
-  return '/audio/po.mp3'
 }
 
 // サウンドエフェクトプレイヤークラス
@@ -52,8 +51,8 @@ class SoundEffectPlayer {
           this.initialized = false
         },
       })
-    } catch {
     } catch (e) {
+      // エラーが発生した場合は初期化失敗
       console.warn('Failed to load selected sound effect:', e)
       this.initialized = false
       return
