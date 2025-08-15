@@ -28,6 +28,7 @@ function getSingleKeyMaps() {
   return { KEY_TO_LANE, VALID_KEYS }
 }
 import { HIT_X, NOTE_SPEED } from '../constants'
+import { playHitSound } from '../utils/soundEffects'
 import { useGameLayout } from '../store.js'
 
 import Note from '../components/Note'
@@ -102,11 +103,12 @@ export default function Play() {
   // 判定結果コールバックの設定
   useEffect(() => {
     setOnJudgment(judgmentType => {
-      console.log('Judgment received:', judgmentType)
       if (judgmentType === 'perfect') {
+        playHitSound()
         showJudgement('Perfect')
         setJudgementColor('text-yellow-400')
       } else if (judgmentType === 'good') {
+        playHitSound()
         showJudgement('Good')
         setJudgementColor('text-orange-500')
       } else if (judgmentType === 'miss') {

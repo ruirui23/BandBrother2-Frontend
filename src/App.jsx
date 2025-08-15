@@ -39,8 +39,8 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-  <Route path="/" element={<Home />} />
-  <Route path="/tutorial" element={<TutorialMenu />} />
+        <Route path="/" element={<Home />} />
+        <Route path="/tutorial" element={<TutorialMenu />} />
         <Route
           path="/select"
           element={

@@ -1,7 +1,7 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom'
 
 export default function TutorialMenu() {
-  const navigate = useNavigate();
+  const navigate = useNavigate()
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-black to-blue-900">
@@ -25,5 +25,5 @@ export default function TutorialMenu() {
         ← 戻る
       </button>
     </div>
-  );
+  )
 }

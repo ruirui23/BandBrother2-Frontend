@@ -101,13 +101,17 @@ export default function useGameCore(songData, difficulty, onGameEnd, keyMaps) {
     }
   }, [started, sound])
 
-  // ゲーム終了 (15秒または曲終了時)
+  // ゲーム終了 (曲終了時のみ)
   useEffect(() => {
-    if (started && time >= 15 && gameState === 'playing' && sound) {
-      setGameState('finished')
-      sound.stop()
-      if (onGameEnd) {
-        onGameEnd({ counts, score, time })
+    if (started && gameState === 'playing' && sound) {
+      const duration = sound.duration ? sound.duration() : null
+      if (duration && time >= duration - 0.05) {
+        // 多少の誤差を許容
+        setGameState('finished')
+        sound.stop()
+        if (onGameEnd) {
+          onGameEnd({ counts, score, time })
+        }
       }
     }
   }, [time, started, gameState, counts, score, onGameEnd, sound])

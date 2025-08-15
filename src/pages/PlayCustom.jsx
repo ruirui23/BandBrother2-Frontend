@@ -1,3 +1,4 @@
+import { playHitSound } from '../utils/soundEffects'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import useGameLoop from '../hooks/useGameLoop'
 import { useParams, useNavigate } from 'react-router-dom'
@@ -46,28 +47,26 @@ export default function PlayCustom() {
     if (typeof newTime !== 'number') return
     setTime(newTime)
 
-    // 終了条件
-    if (
-      chartDataRef.current &&
-      newTime >= (chartDataRef.current.duration || 15)
-    ) {
+    // 曲の終了条件: durationが1秒未満やNaNなら判定しない
+    const duration = soundRef.current.duration
+      ? soundRef.current.duration()
+      : null
+    if (duration && duration > 1 && newTime >= duration - 0.05) {
+      // 多少の誤差を許容
       soundRef.current.stop()
       nav('/result', { state: { score } })
     }
 
     // Miss判定
-    let changed = false
     notesRef.current = notesRef.current.map(n => {
       if (!n.hit && !n.missed && newTime - (n.time - offset) > 0.2) {
+        playHitSound()
         showJudgement('Miss', 'text-blue-400')
-        setCombo(0)
         setScore(s => s - 2)
-        changed = true
         return { ...n, missed: true }
       }
       return n
     })
-    if (changed) setTime(newTime) // 強制再描画
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -76,7 +75,6 @@ export default function PlayCustom() {
   const [judgement, setJudgement] = useState('')
   const [visible, setVisible] = useState(false)
   const [judgementColor, setJudgementColor] = useState('text-yellow-400')
-  const [combo, setCombo] = useState(0)
   const [offset, setOffset] = useState(0)
   const chartDataRef = useRef(null)
 
@@ -112,8 +110,13 @@ export default function PlayCustom() {
             hit: false,
             missed: false,
           }))
-        const audioUrl =
+        const audioUrl = (
           chartDataRef.current.audio?.trim() || '/audio/Henceforth.mp3'
+        )
+          .replace(/ /g, '_')
+          .replace(/[！-～]/g, s =>
+            String.fromCharCode(s.charCodeAt(0) - 0xfee0)
+          ) // 全角→半角
         soundRef.current = new Howl({
           src: [audioUrl],
           html5: true,
@@ -129,12 +132,11 @@ export default function PlayCustom() {
       }
     }
     setScore(0)
-    setCombo(0)
     fetchChart()
     return () => {
       soundRef.current?.unload()
     }
-  }, [chartId, nav, score])
+  }, [chartId, nav])
 
   const onKey = useCallback(
     e => {
@@ -156,13 +158,13 @@ export default function PlayCustom() {
       })
       if (bestMatchIndex === -1) return
       if (minDistance < JUDGE.perfect) {
+        playHitSound()
         showJudgement('Perfect', 'text-yellow-400')
         setScore(s => s + 5)
-        setCombo(c => c + 1)
       } else {
+        playHitSound()
         showJudgement('Good', 'text-orange-500')
         setScore(s => s + 2)
-        setCombo(c => c + 1)
       }
       notesRef.current[bestMatchIndex].hit = true
     },
@@ -236,7 +238,7 @@ export default function PlayCustom() {
       </button>
       {/* スコア表示 */}
       <div className="absolute left-4 top-16 text-xl text-white">
-        Score: {score} / Combo: {combo}
+        Score: {score}
       </div>
       {/* 判定ライン・ノーツ描画 */}
       {isVertical ? (

@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { ALL_SE_FILES } from '../utils/soundEffects'
 import { useGameLayout } from '../store'
 
 const defaultKeys = {
@@ -12,6 +13,19 @@ export default function SettingsModal({ onClose, onSave, initialKeys }) {
   const mergedKeys = { ...defaultKeys, ...(initialKeys || {}) }
   const [keys, setKeys] = useState(mergedKeys)
   const [editing, setEditing] = useState({ player: null, lane: null })
+  // SE選択
+  const [seFile, setSeFile] = useState(() => {
+    try {
+      return localStorage.getItem('seFileName') || '/audio/po.mp3'
+    } catch {
+      return '/audio/po.mp3'
+    }
+  })
+
+  const handleSEChange = e => {
+    setSeFile(e.target.value)
+    localStorage.setItem('seFileName', e.target.value)
+  }
 
   const handleKeyDown = e => {
     if (editing.player && editing.lane !== null) {
@@ -41,8 +55,22 @@ export default function SettingsModal({ onClose, onSave, initialKeys }) {
         >
           <span className="material-icons">close</span>
         </button>
-  <h2 className="text-xl font-bold mb-4">⚙設定</h2>
+        <h2 className="text-xl font-bold mb-4">⚙設定</h2>
         <div className="flex items-center gap-4 mb-6">
+          <div className="mb-4">
+            <div className="font-semibold mb-2">効果音（SE）</div>
+            <select
+              className="w-full px-3 py-2 border rounded"
+              value={seFile}
+              onChange={handleSEChange}
+            >
+              {ALL_SE_FILES.map(f => (
+                <option key={f} value={f}>
+                  {f.replace('/audio/', '').replace('.mp3', '')}
+                </option>
+              ))}
+            </select>
+          </div>
           <span className="font-bold">縦画面/横画面</span>
           <button
             className={`px-4 py-2 rounded-full border-2 flex items-center gap-2 transition-all duration-200 shadow ${isVertical ? 'bg-blue-500 text-white border-blue-700 scale-110' : 'bg-gray-200 text-gray-700 border-gray-400'}`}
