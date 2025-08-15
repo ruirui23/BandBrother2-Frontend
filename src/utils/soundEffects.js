@@ -15,7 +15,8 @@ function getSelectedSEFile() {
     const se = localStorage.getItem('seFileName')
     if (se && ALL_SE_FILES.includes(se)) return se
   } catch {
-    // ignore error and ensure block is not empty for eslint
+  } catch (error) {
+    console.warn('Failed to get SE file from localStorage:', error)
     return '/audio/po.mp3'
   }
   return '/audio/po.mp3'
