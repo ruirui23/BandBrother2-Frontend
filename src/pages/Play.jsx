@@ -1,9 +1,13 @@
-// 17:13 error  Empty block statement  no-empty
 // src/pages/Play.jsx
 import { useParams, useNavigate } from 'react-router-dom'
 import { useEffect, useState, useRef } from 'react'
 import song from '../data/tutorial.json'
 import useGameCore from '../hooks/useGameCore'
+import { HIT_X, NOTE_SPEED } from '../constants'
+import { playHitSound } from '../utils/soundEffects'
+import { useGameLayout } from '../store.js'
+import Note from '../components/Note'
+import HitLine from '../components/HitLine'
 
 // localStorageからキー設定を取得
 function getSingleKeyMaps() {
@@ -27,12 +31,6 @@ function getSingleKeyMaps() {
   const VALID_KEYS = Object.keys(KEY_TO_LANE)
   return { KEY_TO_LANE, VALID_KEYS }
 }
-import { HIT_X, NOTE_SPEED } from '../constants'
-import { playHitSound } from '../utils/soundEffects'
-import { useGameLayout } from '../store.js'
-
-import Note from '../components/Note'
-import HitLine from '../components/HitLine'
 
 // レーンのX座標を定義
 const LANE_X_POSITIONS = [-96, -32, 32, 96]
