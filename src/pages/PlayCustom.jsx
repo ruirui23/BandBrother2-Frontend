@@ -1,10 +1,9 @@
+import { useEffect, useState, useRef, useCallback } from 'react'
+import useGameLoop from '../hooks/useGameLoop'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useEffect, useState, useCallback, useRef } from 'react'
 import { Howl } from 'howler'
 import { db } from '../firebase'
 import { doc, getDoc } from 'firebase/firestore'
-import { useScore, useGameLayout } from '../store'
-import useGameLoop from '../hooks/useGameLoop'
 import { HIT_X, NOTE_SPEED, WINDOW_SEC } from '../constants'
 import Note from '../components/Note'
 import HitLine from '../components/HitLine'
@@ -14,43 +13,88 @@ const JUDGE = { perfect: 24, good: 48 }
 // レーンのY座標を定義
 const LANE_Y_POSITIONS = [-96, -32, 32, 96]
 
-// キーとレーンのマッピング
-const KEY_TO_LANE = {
-  KeyD: 0,
-  KeyF: 1,
-  KeyJ: 2,
-  KeyK: 3,
+// 毎回localStorageから最新のキー設定を取得
+function getKeyMaps() {
+  let keys = ['D', 'F', 'J', 'K']
+  try {
+    const obj = JSON.parse(localStorage.getItem('keySettings'))
+    if (obj && Array.isArray(obj.single) && obj.single.length === 4) {
+      keys = obj.single
+    }
+  } catch {
+    // ignore
+  }
+  const KEY_TO_LANE = Object.fromEntries(
+    keys.map((k, i) => [`Key${k.toUpperCase()}`, i])
+  )
+  const VALID_KEYS = Object.keys(KEY_TO_LANE)
+  return { KEY_TO_LANE, VALID_KEYS }
 }
-const VALID_KEYS = Object.keys(KEY_TO_LANE)
+import { useGameLayout } from '../store'
 
 export default function PlayCustom() {
-  const { isVertical } = useGameLayout()
   const { chartId } = useParams()
   const nav = useNavigate()
-  const { add, reset, counts, score } = useScore()
-
+  const { isVertical } = useGameLayout()
   const notesRef = useRef([])
   const [started, setStarted] = useState(false)
   const [time, setTime] = useState(0)
+  // ゲームループで時間を進める
+  useGameLoop(() => {
+    if (!started || !soundRef.current) return
+    const newTime = soundRef.current.seek()
+    if (typeof newTime !== 'number') return
+    setTime(newTime)
+
+    // 終了条件
+    if (
+      chartDataRef.current &&
+      newTime >= (chartDataRef.current.duration || 15)
+    ) {
+      soundRef.current.stop()
+      nav('/result', { state: { score } })
+    }
+
+    // Miss判定
+    let changed = false
+    notesRef.current = notesRef.current.map(n => {
+      if (!n.hit && !n.missed && newTime - (n.time - offset) > 0.2) {
+        showJudgement('Miss', 'text-blue-400')
+        setCombo(0)
+        setScore(s => s - 2)
+        changed = true
+        return { ...n, missed: true }
+      }
+      return n
+    })
+    if (changed) setTime(newTime) // 強制再描画
+  })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const soundRef = useRef(null)
-  const scoreRef = useRef({ counts, score })
-  const chartDataRef = useRef(null)
-
-  /* ---------- 判定表示 ---------- */
+  const [score, setScore] = useState(0)
   const [judgement, setJudgement] = useState('')
   const [visible, setVisible] = useState(false)
-  const [_ANIMATING, _SET_ANIMATING] = useState(false)
-  const timeoutRef = useRef(null)
   const [judgementColor, setJudgementColor] = useState('text-yellow-400')
+  const [combo, setCombo] = useState(0)
+  const [offset, setOffset] = useState(0)
+  const chartDataRef = useRef(null)
 
-  useEffect(() => {
-    return useScore.subscribe(
-      state => (scoreRef.current = { counts: state.counts, score: state.score })
-    )
-  }, [])
+  // 画面サイズ
+  const screenHeight = typeof window !== 'undefined' ? window.innerHeight : 800
+  const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 600
+  const HIT_Y = screenHeight - 120
+  const HIT_X = 160
+  const circleSize = 64
+  const yPos = HIT_Y - circleSize / 4
 
+  // 判定表示コールバック
+  const showJudgement = (text, color) => {
+    setJudgement(text)
+    setJudgementColor(color)
+    setVisible(true)
+    setTimeout(() => setVisible(false), 500)
+  }
   useEffect(() => {
     const fetchChart = async () => {
       try {
@@ -58,11 +102,9 @@ export default function PlayCustom() {
         const docRef = doc(db, 'charts', chartId)
         const snap = await getDoc(docRef)
         if (!snap.exists()) throw new Error('Chart data does not exist.')
-
-        const chartData = snap.data()
-        chartDataRef.current = chartData
-
-        notesRef.current = (chartData.notes ?? [])
+        chartDataRef.current = snap.data()
+        setOffset(chartDataRef.current.offset || 0)
+        notesRef.current = (chartDataRef.current.notes ?? [])
           .sort((a, b) => a.time - b.time)
           .map(n => ({
             ...n,
@@ -70,15 +112,15 @@ export default function PlayCustom() {
             hit: false,
             missed: false,
           }))
-
-        const audioUrl = chartData.audio?.trim() || '/audio/Henceforth.mp3'
+        const audioUrl =
+          chartDataRef.current.audio?.trim() || '/audio/Henceforth.mp3'
         soundRef.current = new Howl({
           src: [audioUrl],
           html5: true,
           onload: () => setLoading(false),
           onerror: () => setError('音声の読み込みに失敗しました。'),
           onend: () => {
-            setTimeout(() => nav('/result', { state: scoreRef.current }), 500)
+            setTimeout(() => nav('/result', { state: { score } }), 500)
           },
         })
       } catch {
@@ -86,121 +128,62 @@ export default function PlayCustom() {
         setLoading(false)
       }
     }
-    reset()
+    setScore(0)
+    setCombo(0)
     fetchChart()
     return () => {
       soundRef.current?.unload()
     }
-  }, [chartId, reset, nav])
-
-  useEffect(() => {
-    if (loading || !soundRef.current) return
-    const onFirstKey = () => {
-      if (!soundRef.current.playing()) {
-        soundRef.current.play()
-        setStarted(true)
-      }
-    }
-    window.addEventListener('keydown', onFirstKey, { once: true })
-    return () => window.removeEventListener('keydown', onFirstKey)
-  }, [loading])
-
-  useGameLoop(() => {
-    if (!started || !soundRef.current) return
-    const newTime = soundRef.current.seek()
-    if (typeof newTime !== 'number') return
-    setTime(newTime)
-
-    let misses = 0
-    for (const n of notesRef.current) {
-      if (!n.hit && !n.missed && newTime - n.time > 0.2) {
-        n.missed = true
-        misses++
-      }
-    }
-    if (misses > 0) {
-      for (let i = 0; i < misses; i++) {
-        add('miss')
-        showJudgement('Miss')
-        setJudgementColor('text-blue-400')
-      }
-    }
-  })
-
-  const showJudgement = text => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current)
-    setJudgement(text)
-    setVisible(true)
-
-    setTimeout(() => {
-      setVisible(false)
-      _SET_ANIMATING(false)
-    }, 500) // 0.5秒で消す
-  }
+  }, [chartId, nav, score])
 
   const onKey = useCallback(
     e => {
+      const { KEY_TO_LANE, VALID_KEYS } = getKeyMaps()
       if (!started || !VALID_KEYS.includes(e.code)) return
-
       const lane = KEY_TO_LANE[e.code]
       const currentTime = soundRef.current?.seek() || 0
-
       let bestMatchIndex = -1
       let minDistance = Infinity
-
       notesRef.current.forEach((n, index) => {
         if (n.lane !== lane || n.hit || n.missed) return
         const distance = Math.abs(
-          HIT_X - (HIT_X + (n.time - currentTime) * NOTE_SPEED)
+          HIT_X - (HIT_X + (n.time - currentTime - offset) * NOTE_SPEED)
         )
         if (distance < JUDGE.good && distance < minDistance) {
           minDistance = distance
           bestMatchIndex = index
         }
       })
-
       if (bestMatchIndex === -1) return
-
-      const note = notesRef.current[bestMatchIndex]
       if (minDistance < JUDGE.perfect) {
-        add('perfect')
-        showJudgement('Perfect')
-        setJudgementColor('text-yellow-400')
+        showJudgement('Perfect', 'text-yellow-400')
+        setScore(s => s + 5)
+        setCombo(c => c + 1)
       } else {
-        add('good')
-        showJudgement('Good')
-        setJudgementColor('text-orange-500')
+        showJudgement('Good', 'text-orange-500')
+        setScore(s => s + 2)
+        setCombo(c => c + 1)
       }
-
-      note.hit = true
-      setTime(currentTime)
+      notesRef.current[bestMatchIndex].hit = true
     },
-    [started, add]
+    [started, offset]
   )
 
   useEffect(() => {
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onKey])
-
-  useEffect(() => {
-    if (
-      started &&
-      chartDataRef.current &&
-      time >= (chartDataRef.current.duration || 15)
-    ) {
-      soundRef.current?.stop()
-      nav('/result', { state: scoreRef.current })
+    if (loading) return
+    const onFirstKey = () => {
+      if (!soundRef.current?.playing()) {
+        soundRef.current?.play()
+        setStarted(true)
+      }
     }
-  }, [time, started, nav])
-
-  const visibleNotes = notesRef.current.filter(
-    n => !n.hit && !n.missed && Math.abs(n.time - time) < WINDOW_SEC
-  )
-  const screenHeight = typeof window !== 'undefined' ? window.innerHeight : 800
-  const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 600
-  const circleSize = 64
-  const yPos = screenHeight - 120 - circleSize / 4
+    window.addEventListener('keydown', onFirstKey, { once: true })
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onFirstKey)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [onKey, loading])
 
   if (loading)
     return (
@@ -214,15 +197,34 @@ export default function PlayCustom() {
         {error}
       </div>
     )
-  if (!started)
+  if (!started) {
+    // キー設定を取得
+    let keys = ['D', 'F', 'J', 'K']
+    try {
+      const obj = JSON.parse(localStorage.getItem('keySettings'))
+      if (obj && Array.isArray(obj.single) && obj.single.length === 4) {
+        keys = obj.single
+      }
+    } catch {
+      // ignore
+    }
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-black text-white text-center">
+      <div
+        className="flex flex-col items-center justify-center h-screen bg-black text-white text-center"
+        onClick={() => setStarted(true)}
+      >
         <div className="text-2xl mb-4">
-          上のレーンからD，F，J，Kを押してプレイしてね
+          上のレーンから{keys.join('，')}を押してプレイしてね
         </div>
         <div className="text-xl text-gray-300">タップしてスタート</div>
       </div>
     )
+  }
+
+  // ノーツの表示リスト
+  const visibleNotes = notesRef.current.filter(
+    n => !n.hit && !n.missed && Math.abs(n.time - time - offset) < WINDOW_SEC
+  )
 
   return (
     <div className="relative h-screen overflow-hidden bg-black">
@@ -234,11 +236,10 @@ export default function PlayCustom() {
       </button>
       {/* スコア表示 */}
       <div className="absolute left-4 top-16 text-xl text-white">
-        Score: {score}
+        Score: {score} / Combo: {combo}
       </div>
       {/* 判定ライン・ノーツ描画 */}
       {isVertical ? (
-        // 縦画面（上から下）
         <>
           <div
             className="absolute flex justify-center w-full"
@@ -252,12 +253,11 @@ export default function PlayCustom() {
           </div>
           {visibleNotes.map(n => {
             const xPos = screenWidth / 2 + LANE_Y_POSITIONS[n.lane || 0]
-            const y = screenHeight - 120 - (n.time - time) * NOTE_SPEED
+            const y = screenHeight - 120 - (n.time - time - offset) * NOTE_SPEED
             return <Note key={n.id} x={xPos} y={y} lane={n.lane} />
           })}
         </>
       ) : (
-        // 横画面（右から左）
         <>
           <div
             className="absolute flex flex-col items-center"
@@ -277,7 +277,7 @@ export default function PlayCustom() {
             return (
               <Note
                 key={n.id}
-                x={HIT_X + (n.time - time) * NOTE_SPEED}
+                x={HIT_X + (n.time - time - offset) * NOTE_SPEED}
                 y={yPos}
                 lane={n.lane}
               />

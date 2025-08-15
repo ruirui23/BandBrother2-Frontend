@@ -8,21 +8,25 @@ import { playHitSound } from '../utils/soundEffects'
 // 共通の判定定数
 const JUDGE = { perfect: 24, good: 48 }
 
-// キーとレーンのマッピング
-const KEY_TO_LANE = {
+// デフォルトのキーとレーンのマッピング
+const DEFAULT_KEY_TO_LANE = {
   KeyD: 0,
   KeyF: 1,
   KeyJ: 2,
   KeyK: 3,
 }
-const VALID_KEYS = Object.keys(KEY_TO_LANE)
+const DEFAULT_VALID_KEYS = Object.keys(DEFAULT_KEY_TO_LANE)
 
 /**
  * 共通ゲームロジック
  * シングルプレイ・マルチプレイ共通のコアゲーム機能を提供
  */
-export default function useGameCore(songData, difficulty, onGameEnd) {
-  const { add, reset, counts, score } = useScore()
+export default function useGameCore(songData, difficulty, onGameEnd, keyMaps) {
+  const { add, reset, counts, score } = useScore() // スコア管理用のフック
+
+  // キー設定
+  const KEY_TO_LANE = keyMaps?.KEY_TO_LANE || DEFAULT_KEY_TO_LANE
+  const VALID_KEYS = keyMaps?.VALID_KEYS || DEFAULT_VALID_KEYS
 
   // songDataの構造を安全にチェック
   const difficulties = songData?.difficulty || {}
@@ -161,7 +165,7 @@ export default function useGameCore(songData, difficulty, onGameEnd) {
 
       return { judgmentType, note }
     },
-    [offset, add]
+    [offset, add, KEY_TO_LANE, VALID_KEYS]
   )
 
   // キー入力処理
