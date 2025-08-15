@@ -106,7 +106,7 @@ export default function useGameCore(songData, difficulty, onGameEnd, keyMaps) {
     if (started && gameState === 'playing' && sound) {
       const duration = sound.duration ? sound.duration() : null
       const allNotesProcessed = notesRef.current.every(n => n.hit || n.missed)
-      
+
       // 曲が終了した場合、または全ノーツが処理された場合にゲーム終了
       if ((duration && time >= duration - 0.05) || allNotesProcessed) {
         setGameState('finished')
@@ -237,7 +237,6 @@ export default function useGameCore(songData, difficulty, onGameEnd, keyMaps) {
         add('miss')
         console.log('Miss detected!')
         onJudgmentRef.current('miss') // 判定結果をコールバック
-        playHitSound() // ミス音を再生
         missedAny = true
         return { ...n, missed: true }
       }
