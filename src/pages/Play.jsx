@@ -33,7 +33,7 @@ import { useGameLayout } from '../store.js'
 import Note from '../components/Note'
 import HitLine from '../components/HitLine'
 
-// レーンのY座標を定義
+// レーンのX座標を定義
 const LANE_X_POSITIONS = [-96, -32, 32, 96]
 
 export default function Play() {
