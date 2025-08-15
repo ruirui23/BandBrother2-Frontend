@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { Howl } from 'howler'
 import songData from '../data/tutorial.json'
 import { HIT_X, NOTE_SPEED, WINDOW_SEC } from '../constants'
+import { playHitSound } from '../utils/soundEffects'
 import Note from '../components/Note'
 import HitLine from '../components/HitLine'
 import useGameLoop from '../hooks/useGameLoop'
@@ -207,6 +208,7 @@ export default function TwoPlayerPlay() {
       if (bestMatchIndex === -1) return
 
       if (minDistance < JUDGE.perfect) {
+        playHitSound()
         scoreRef.current.perfect++
         scoreRef.current.score += 5
         if (isP1Key) {
@@ -217,6 +219,7 @@ export default function TwoPlayerPlay() {
           setJudgementColor2('text-yellow-400')
         }
       } else {
+        playHitSound()
         scoreRef.current.good++
         scoreRef.current.score += 2
         if (isP1Key) {

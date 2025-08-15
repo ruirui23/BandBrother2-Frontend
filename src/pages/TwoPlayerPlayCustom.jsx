@@ -1,3 +1,4 @@
+import { playHitSound } from '../utils/soundEffects'
 // 339:13 error  Empty block statement  no-empty
 import { useParams, useNavigate } from 'react-router-dom'
 import { useEffect, useState, useCallback, useRef } from 'react'
@@ -285,6 +286,7 @@ export default function TwoPlayerPlayCustom() {
       if (bestMatchIndex === -1) return
 
       if (minDistance < JUDGE.perfect) {
+        playHitSound()
         scoreRef.current.perfect++
         scoreRef.current.score += 5
         if (isP1Key) {
@@ -295,6 +297,7 @@ export default function TwoPlayerPlayCustom() {
           setJudgementColor2('text-yellow-400')
         }
       } else {
+        playHitSound()
         scoreRef.current.good++
         scoreRef.current.score += 2
         if (isP1Key) {

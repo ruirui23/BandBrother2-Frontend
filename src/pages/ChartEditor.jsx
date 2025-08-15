@@ -1,3 +1,4 @@
+import { playHitSound } from '../utils/soundEffects'
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { onAuthStateChanged } from 'firebase/auth'
@@ -87,6 +88,7 @@ const EditorLane = React.memo(
         if (foundIndex !== -1) {
           onNotesChange(notes.filter((_, i) => i !== foundIndex))
         } else {
+          playHitSound()
           onNotesChange(
             [...notes, { time, lane, type: 'tap' }].sort(
               (a, b) => a.time - b.time

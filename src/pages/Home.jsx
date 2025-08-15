@@ -149,17 +149,15 @@ const Home = () => {
         <div className="flex flex-col gap-6 items-center w-full max-w-xs">
           <button
             className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white text-xl font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
-            onClick={() =>
-              navigate('/select', { state: { playerId: user.uid } })
-            }
+            onClick={() => navigate('/tutorial')}
           >
-            <FaGamepad /> 一人プレイ
+            <FaMusic /> チュートリアル譜面で遊ぶ
           </button>
           <button
-            className="w-full py-4 bg-green-600 hover:bg-green-700 text-white text-xl font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
-            onClick={() => navigate('/two-player-select')}
+            className="w-full py-4 bg-pink-600 hover:bg-pink-700 text-white text-xl font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
+            onClick={() => navigate('/custom-charts')}
           >
-            <FaGamepad /> 二人プレイ
+            <FaMusic /> カスタム譜面で遊ぶ
           </button>
           <button
             className="w-full py-4 bg-yellow-500 hover:bg-yellow-600 text-white text-xl font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
@@ -173,18 +171,12 @@ const Home = () => {
           >
             <FaGamepad /> マルチプレイ
           </button>
-          <button
-            className="w-full py-4 bg-pink-600 hover:bg-pink-700 text-white text-xl font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
-            onClick={() => navigate('/custom-charts')}
-          >
-            <FaMusic /> カスタム譜面で遊ぶ
-          </button>
           {/* 設定ボタン */}
           <button
             className="w-full py-4 bg-gray-700 hover:bg-gray-800 text-white text-xl font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
             onClick={() => setShowSettings(true)}
           >
-            <span className="material-icons">settings</span> 設定
+            <span className="material-icons"></span> 設定
           </button>
           {/* 設定モーダル */}
           {showSettings && (
