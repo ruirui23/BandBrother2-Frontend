@@ -53,7 +53,8 @@ class SoundEffectPlayer {
         },
       })
     } catch {
-      // ignore error and ensure block is not empty for eslint
+    } catch (e) {
+      console.warn('Failed to load selected sound effect:', e)
       this.initialized = false
       return
     }
