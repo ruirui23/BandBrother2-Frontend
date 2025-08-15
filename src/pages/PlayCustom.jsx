@@ -4,8 +4,6 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Howl } from 'howler'
 import { db } from '../firebase'
 import { doc, getDoc } from 'firebase/firestore'
-// import { useScore } from '../store' // 未使用のため削除
-// import useGameLoop from '../hooks/useGameLoop' // 未使用のため削除
 import { HIT_X, NOTE_SPEED, WINDOW_SEC } from '../constants'
 import Note from '../components/Note'
 import HitLine from '../components/HitLine'
@@ -138,8 +136,6 @@ export default function PlayCustom() {
     }
   }, [chartId, nav, score])
 
-  // showJudgement未使用のため削除
-
   const onKey = useCallback(
     e => {
       const { KEY_TO_LANE, VALID_KEYS } = getKeyMaps()
@@ -188,10 +184,6 @@ export default function PlayCustom() {
       window.removeEventListener('keydown', onKey)
     }
   }, [onKey, loading])
-
-  // (ゲームループで終了判定するので不要)
-
-  // visibleNotes未使用のため削除
 
   if (loading)
     return (
