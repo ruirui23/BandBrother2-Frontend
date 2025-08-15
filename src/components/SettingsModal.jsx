@@ -41,16 +41,13 @@ export default function SettingsModal({ onClose, onSave, initialKeys }) {
         >
           <span className="material-icons">close</span>
         </button>
-        <h2 className="text-xl font-bold mb-4">設定</h2>
+  <h2 className="text-xl font-bold mb-4">⚙設定</h2>
         <div className="flex items-center gap-4 mb-6">
           <span className="font-bold">縦画面/横画面</span>
           <button
             className={`px-4 py-2 rounded-full border-2 flex items-center gap-2 transition-all duration-200 shadow ${isVertical ? 'bg-blue-500 text-white border-blue-700 scale-110' : 'bg-gray-200 text-gray-700 border-gray-400'}`}
             onClick={toggleDirection}
           >
-            <span className="material-icons">
-              {isVertical ? 'screen_lock_portrait' : 'screen_lock_landscape'}
-            </span>
             {isVertical ? '縦画面' : '横画面'}
           </button>
         </div>

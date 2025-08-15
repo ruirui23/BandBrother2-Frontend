@@ -6,6 +6,7 @@ import {
   useLocation,
 } from 'react-router-dom'
 import Home from './pages/Home.jsx'
+import TutorialMenu from './pages/TutorialMenu.jsx'
 import SelectDifficulty from './pages/SelectDifficulty.jsx'
 import SelectDifficultyMulti from './pages/SelectDifficultyMulti.jsx'
 import Play from './pages/Play.jsx'
@@ -38,7 +39,8 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Home />} />
+  <Route path="/" element={<Home />} />
+  <Route path="/tutorial" element={<TutorialMenu />} />
         <Route
           path="/select"
           element={
@@ -130,6 +132,14 @@ export default function App() {
           element={
             <RequireAuth>
               <TwoPlayerPlayCustom />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/twoplayer/play/tutorial/:difficulty"
+          element={
+            <RequireAuth>
+              <TwoPlayerPlay />
             </RequireAuth>
           }
         />
