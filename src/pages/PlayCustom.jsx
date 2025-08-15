@@ -114,7 +114,8 @@ export default function PlayCustom() {
             hit: false,
             missed: false,
           }))
-        const audioUrl = chartDataRef.current.audio?.trim() || '/audio/Henceforth.mp3'
+        const audioUrl =
+          chartDataRef.current.audio?.trim() || '/audio/Henceforth.mp3'
         soundRef.current = new Howl({
           src: [audioUrl],
           html5: true,
@@ -216,7 +217,10 @@ export default function PlayCustom() {
       // ignore
     }
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-black text-white text-center" onClick={() => setStarted(true)}>
+      <div
+        className="flex flex-col items-center justify-center h-screen bg-black text-white text-center"
+        onClick={() => setStarted(true)}
+      >
         <div className="text-2xl mb-4">
           上のレーンから{keys.join('，')}を押してプレイしてね
         </div>
