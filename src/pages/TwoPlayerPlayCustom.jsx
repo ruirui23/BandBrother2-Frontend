@@ -1,3 +1,4 @@
+// 339:13 error  Empty block statement  no-empty
 import { useParams, useNavigate } from 'react-router-dom'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { Howl } from 'howler'
@@ -11,21 +12,41 @@ import useGameLoop from '../hooks/useGameLoop'
 
 const JUDGE = { perfect: 24, good: 48 }
 
-// --- Player 1 (Top Screen) ---
+// --- Player 1/2 キー設定をlocalStorageから取得 ---
 const P1_LANE_Y_POS = [-96, -32, 32, 96]
-const P1_KEY_TO_LANE = { KeyQ: 0, KeyW: 1, KeyE: 2, KeyR: 3 }
-
-// --- Player 2 (Bottom Screen) ---
 const P2_LANE_Y_POS = [-96, -32, 32, 96]
-const P2_KEY_TO_LANE = { KeyU: 0, KeyI: 1, KeyO: 2, KeyP: 3 }
-
+function getKeySettings() {
+  try {
+    return (
+      JSON.parse(localStorage.getItem('keySettings')) || {
+        p1: ['Q', 'W', 'E', 'R'],
+        p2: ['U', 'I', 'O', 'P'],
+      }
+    )
+  } catch {
+    return { p1: ['Q', 'W', 'E', 'R'], p2: ['U', 'I', 'O', 'P'] }
+  }
+}
+const userKeys = getKeySettings()
+const P1_KEY_TO_LANE = Object.fromEntries(
+  (userKeys.p1 || ['Q', 'W', 'E', 'R']).map((k, i) => [
+    `Key${k.toUpperCase()}`,
+    i,
+  ])
+)
+const P2_KEY_TO_LANE = Object.fromEntries(
+  (userKeys.p2 || ['U', 'I', 'O', 'P']).map((k, i) => [
+    `Key${k.toUpperCase()}`,
+    i,
+  ])
+)
 const ALL_VALID_KEYS = [
   ...Object.keys(P1_KEY_TO_LANE),
   ...Object.keys(P2_KEY_TO_LANE),
 ]
 
 export default function TwoPlayerPlayCustom() {
-  const { isVertical } = useGameLayout()
+  const { isVertical } = useGameLayout() // レイアウトの方向を取得
   const { chartId } = useParams()
   const nav = useNavigate()
 
@@ -323,16 +344,28 @@ export default function TwoPlayerPlayCustom() {
         {error}
       </div>
     )
-  if (!started)
+  if (!started) {
+    // キー設定を取得
+    let p1 = ['Q', 'W', 'E', 'R']
+    let p2 = ['U', 'I', 'O', 'P']
+    try {
+      const obj = JSON.parse(localStorage.getItem('keySettings'))
+      if (obj && Array.isArray(obj.p1) && obj.p1.length === 4) p1 = obj.p1
+      if (obj && Array.isArray(obj.p2) && obj.p2.length === 4) p2 = obj.p2
+    } catch {
+      // ignore
+    }
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-black text-white text-center">
         <div className="text-2xl mb-4">
-          1Pは上のレーンからQ，W，E，Rキー
-          2PはU，I，O，Pキーを押してプレイしてね
+          1Pは上のレーンから{p1.join('，')}キー
+          <br />
+          2Pは{p2.join('，')}キーを押してプレイしてね
         </div>
         <div className="text-xl text-gray-300">タップしてスタート</div>
       </div>
     )
+  }
 
   const screenHeight = window.innerHeight
   const screenWidth = window.innerWidth

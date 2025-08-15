@@ -1,8 +1,32 @@
+// 17:13 error  Empty block statement  no-empty
 // src/pages/Play.jsx
 import { useParams, useNavigate } from 'react-router-dom'
 import { useEffect, useState, useRef } from 'react'
 import song from '../data/tutorial.json'
 import useGameCore from '../hooks/useGameCore'
+
+// localStorageからキー設定を取得
+function getSingleKeyMaps() {
+  const saved = localStorage.getItem('keySettings')
+  let keys = ['D', 'F', 'J', 'K']
+  if (saved) {
+    try {
+      const obj = JSON.parse(saved)
+      if (obj.single && Array.isArray(obj.single) && obj.single.length === 4) {
+        keys = obj.single
+      }
+    } catch {
+      // ignore
+    }
+  }
+  // 例: { KeyD:0, KeyF:1, KeyJ:2, KeyK:3 }
+  const KEY_TO_LANE = {}
+  keys.forEach((k, i) => {
+    KEY_TO_LANE['Key' + k.toUpperCase()] = i
+  })
+  const VALID_KEYS = Object.keys(KEY_TO_LANE)
+  return { KEY_TO_LANE, VALID_KEYS }
+}
 import { HIT_X, NOTE_SPEED } from '../constants'
 import { useGameLayout } from '../store.js'
 
@@ -25,6 +49,7 @@ export default function Play() {
   }
 
   /* ---------- 共通ゲームロジック ---------- */
+  const keyMaps = getSingleKeyMaps()
   const {
     notes: visibleNotes,
     time,
@@ -35,10 +60,12 @@ export default function Play() {
     sound,
     startGame,
     setOnJudgment,
-  } = useGameCore(song, difficulty, handleGameEnd)
+    KEY_TO_LANE,
+    VALID_KEYS,
+  } = useGameCore(song, difficulty, handleGameEnd, keyMaps)
 
   /* ---------- 判定表示 ---------- */
-  const [judgement, setJudgement] = useState('')
+  const [judgement, setJudgement] = useState('') // 判定表示用の状態
   const [visible, setVisible] = useState(false)
   const [judgementColor, setJudgementColor] = useState('text-yellow-400')
   const scoreRef = useRef({ counts, score })

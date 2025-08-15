@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { useGameLayout } from '../store.js'
+// import { useGameLayout } from '../store.js' // 未使用のため削除
+import SettingsModal from '../components/SettingsModal'
 import { auth } from '../firebase'
 import {
   signInWithEmailAndPassword,
@@ -22,7 +23,27 @@ import {
 
 const Home = () => {
   const [showSettings, setShowSettings] = useState(false)
-  const { isVertical, toggleDirection } = useGameLayout()
+  // const { isVertical, toggleDirection } = useGameLayout() // 未使用のため削除
+  const defaultKeys = {
+    single: ['D', 'F', 'J', 'K'],
+    p1: ['Q', 'W', 'E', 'R'],
+    p2: ['U', 'I', 'O', 'P'],
+  }
+  const [keySettings, setKeySettings] = useState(() => {
+    try {
+      return {
+        ...defaultKeys,
+        ...(JSON.parse(localStorage.getItem('keySettings')) || {}),
+      }
+    } catch {
+      return defaultKeys
+    }
+  })
+  const handleSaveSettings = keys => {
+    setKeySettings(keys)
+    localStorage.setItem('keySettings', JSON.stringify(keys))
+    setShowSettings(false)
+  }
   const [showLogin, setShowLogin] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -169,26 +190,11 @@ const Home = () => {
           </button>
           {/* 設定モーダル */}
           {showSettings && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg p-8 min-w-[320px] relative">
-                <button
-                  className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
-                  onClick={() => setShowSettings(false)}
-                >
-                  <span className="material-icons">close</span>
-                </button>
-                <h2 className="text-xl font-bold mb-4">設定</h2>
-                <div className="flex items-center gap-4 mb-4">
-                  <span>譜面の流れ</span>
-                  <button
-                    className={`px-4 py-2 rounded ${isVertical ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
-                    onClick={toggleDirection}
-                  >
-                    {isVertical ? '縦画面' : '横画面'}
-                  </button>
-                </div>
-              </div>
-            </div>
+            <SettingsModal
+              onClose={() => setShowSettings(false)}
+              onSave={handleSaveSettings}
+              initialKeys={keySettings}
+            />
           )}
         </div>
       ) : (
