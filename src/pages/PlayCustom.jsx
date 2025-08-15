@@ -54,7 +54,9 @@ export default function PlayCustom() {
     if (duration && duration > 1 && newTime >= duration - 0.05) {
       // 多少の誤差を許容
       soundRef.current.stop()
-      nav('/result', { state: { score } })
+      nav('/result', {
+        state: { score: scoreRef.current, counts: countsRef.current },
+      })
     }
 
     // Miss判定
@@ -62,7 +64,12 @@ export default function PlayCustom() {
       if (!n.hit && !n.missed && newTime - (n.time - offset) > 0.2) {
         playHitSound()
         showJudgement('Miss', 'text-blue-400')
-        setScore(s => s - 2)
+        setScore(s => {
+          const next = s - 2
+          scoreRef.current = next
+          return next
+        })
+        countsRef.current.miss += 1
         return { ...n, missed: true }
       }
       return n
@@ -77,6 +84,11 @@ export default function PlayCustom() {
   const [judgementColor, setJudgementColor] = useState('text-yellow-400')
   const [offset, setOffset] = useState(0)
   const chartDataRef = useRef(null)
+
+  // 判定カウント
+  const countsRef = useRef({ perfect: 0, good: 0, miss: 0 })
+  // スコア参照
+  const scoreRef = useRef(0)
 
   // 画面サイズ
   const screenHeight = typeof window !== 'undefined' ? window.innerHeight : 800
@@ -123,7 +135,13 @@ export default function PlayCustom() {
           onload: () => setLoading(false),
           onerror: () => setError('音声の読み込みに失敗しました。'),
           onend: () => {
-            setTimeout(() => nav('/result', { state: { score } }), 500)
+            setTimeout(
+              () =>
+                nav('/result', {
+                  state: { score: scoreRef.current, counts: countsRef.current },
+                }),
+              500
+            )
           },
         })
       } catch {
@@ -137,6 +155,11 @@ export default function PlayCustom() {
       soundRef.current?.unload()
     }
   }, [chartId, nav])
+
+  // スコア変更時にscoreRefも更新
+  useEffect(() => {
+    scoreRef.current = score
+  }, [score])
 
   const onKey = useCallback(
     e => {
@@ -160,11 +183,21 @@ export default function PlayCustom() {
       if (minDistance < JUDGE.perfect) {
         playHitSound()
         showJudgement('Perfect', 'text-yellow-400')
-        setScore(s => s + 5)
+        setScore(s => {
+          const next = s + 5
+          scoreRef.current = next
+          return next
+        })
+        countsRef.current.perfect += 1
       } else {
         playHitSound()
         showJudgement('Good', 'text-orange-500')
-        setScore(s => s + 2)
+        setScore(s => {
+          const next = s + 2
+          scoreRef.current = next
+          return next
+        })
+        countsRef.current.good += 1
       }
       notesRef.current[bestMatchIndex].hit = true
     },
