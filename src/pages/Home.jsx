@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react'
-// import { useGameLayout } from '../store.js' // 未使用のため削除
 import SettingsModal from '../components/SettingsModal'
 import { auth } from '../firebase'
 import {
@@ -23,7 +22,6 @@ import {
 
 const Home = () => {
   const [showSettings, setShowSettings] = useState(false)
-  // const { isVertical, toggleDirection } = useGameLayout() // 未使用のため削除
   const defaultKeys = {
     single: ['D', 'F', 'J', 'K'],
     p1: ['Q', 'W', 'E', 'R'],
