@@ -101,12 +101,14 @@ export default function useGameCore(songData, difficulty, onGameEnd, keyMaps) {
     }
   }, [started, sound])
 
-  // ゲーム終了 (曲終了時のみ)
+  // ゲーム終了 (曲終了時または全ノーツ処理完了時)
   useEffect(() => {
     if (started && gameState === 'playing' && sound) {
       const duration = sound.duration ? sound.duration() : null
-      if (duration && time >= duration - 0.05) {
-        // 多少の誤差を許容
+      const allNotesProcessed = notesRef.current.every(n => n.hit || n.missed)
+      
+      // 曲が終了した場合、または全ノーツが処理された場合にゲーム終了
+      if ((duration && time >= duration - 0.05) || allNotesProcessed) {
         setGameState('finished')
         sound.stop()
         if (onGameEnd) {
