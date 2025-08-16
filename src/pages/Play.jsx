@@ -8,6 +8,7 @@ import { playHitSound } from '../utils/soundEffects'
 import { useGameLayout } from '../store.js'
 import Note from '../components/Note'
 import HitLine from '../components/HitLine'
+import useSimpleJoycon from '../hooks/useSimpleJoycon'
 
 // localStorageからキー設定を取得
 function getSingleKeyMaps() {
@@ -61,7 +62,11 @@ export default function Play() {
     setOnJudgment,
     KEY_TO_LANE,
     VALID_KEYS,
+    handleKeyPress,
   } = useGameCore(song, difficulty, handleGameEnd, keyMaps)
+
+  /* ---------- ジョイコン機能 ---------- */
+  const { isConnected, isConnecting, error, connect, disconnect, setOnButtonPress } = useSimpleJoycon()
 
   /* ---------- 判定表示 ---------- */
   const [judgement, setJudgement] = useState('') // 判定表示用の状態
@@ -73,6 +78,25 @@ export default function Play() {
   useEffect(() => {
     scoreRef.current = { counts, score }
   }, [counts, score])
+
+  // ジョイコンボタン入力をキー入力として処理
+  useEffect(() => {
+    setOnButtonPress((key) => {
+      // ゲーム未開始時は開始
+      if (!started && sound) {
+        startGame()
+      }
+      
+      // Kキーとして処理（KeyKをシミュレート）
+      const simulatedEvent = {
+        code: 'KeyK',
+        key: 'K',
+        preventDefault: () => {},
+        stopPropagation: () => {}
+      }
+      handleKeyPress(simulatedEvent)
+    })
+  }, [setOnButtonPress, started, sound, startGame, handleKeyPress])
 
   // 最初のキー入力でゲーム開始
   useEffect(() => {
@@ -133,6 +157,39 @@ export default function Play() {
       >
         Back
       </button>
+      
+      {/* ジョイコン接続UI */}
+      <div className="absolute right-4 top-4 z-30">
+        {!isConnected ? (
+          <button
+            className={`px-4 py-2 text-white rounded ${
+              isConnecting 
+                ? 'bg-yellow-600 cursor-not-allowed' 
+                : 'bg-blue-600 hover:bg-blue-700'
+            }`}
+            onClick={connect}
+            disabled={isConnecting}
+          >
+            {isConnecting ? '接続中...' : 'Joy-Con接続'}
+          </button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="text-green-400">🎮 Joy-Con接続済み</span>
+            <button
+              className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm"
+              onClick={disconnect}
+            >
+              切断
+            </button>
+          </div>
+        )}
+        {error && (
+          <div className="text-red-400 text-sm mt-1 max-w-48">
+            {error}
+          </div>
+        )}
+      </div>
+
       {/* スコア表示 */}
       <div className="absolute left-4 top-16 text-xl text-white">
         Score: {score}

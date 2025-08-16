@@ -8,6 +8,7 @@ import { doc, getDoc } from 'firebase/firestore'
 import { HIT_X, NOTE_SPEED, WINDOW_SEC } from '../constants'
 import Note from '../components/Note'
 import HitLine from '../components/HitLine'
+import useSimpleJoycon from '../hooks/useSimpleJoycon'
 
 const JUDGE = { perfect: 24, good: 48 }
 
@@ -40,6 +41,9 @@ export default function PlayCustom() {
   const notesRef = useRef([])
   const [started, setStarted] = useState(false)
   const [time, setTime] = useState(0)
+  
+  // ジョイコン機能
+  const { isConnected, isConnecting, error: joyconError, connect, disconnect, setOnButtonPress } = useSimpleJoycon()
   // ゲームループで時間を進める
   useGameLoop(() => {
     if (!started || !soundRef.current) return
@@ -81,7 +85,7 @@ export default function PlayCustom() {
     })
   })
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [_error, setError] = useState(null)
   const soundRef = useRef(null)
   const [score, setScore] = useState(0)
   const [judgement, setJudgement] = useState('')
@@ -214,6 +218,26 @@ export default function PlayCustom() {
     [started, offset]
   )
 
+  // ジョイコンボタン入力をキー入力として処理
+  useEffect(() => {
+    setOnButtonPress((key) => {
+      // ゲーム未開始時は開始
+      if (!started && !soundRef.current?.playing()) {
+        soundRef.current?.play()
+        setStarted(true)
+      }
+      
+      // Kキーとして処理（KeyKをシミュレート）
+      const simulatedEvent = {
+        code: 'KeyK',
+        key: 'K',
+        preventDefault: () => {},
+        stopPropagation: () => {}
+      }
+      onKey(simulatedEvent)
+    })
+  }, [setOnButtonPress, started, onKey])
+
   useEffect(() => {
     if (loading) return
     const onFirstKey = () => {
@@ -236,10 +260,10 @@ export default function PlayCustom() {
         Loading Chart...
       </div>
     )
-  if (error)
+  if (_error)
     return (
       <div className="flex items-center justify-center h-screen bg-black text-red-500 text-2xl">
-        {error}
+        {_error}
       </div>
     )
   if (!started) {
@@ -279,6 +303,39 @@ export default function PlayCustom() {
       >
         Back
       </button>
+      
+      {/* ジョイコン接続UI */}
+      <div className="absolute right-4 top-4 z-30">
+        {!isConnected ? (
+          <button
+            className={`px-4 py-2 text-white rounded ${
+              isConnecting 
+                ? 'bg-yellow-600 cursor-not-allowed' 
+                : 'bg-blue-600 hover:bg-blue-700'
+            }`}
+            onClick={connect}
+            disabled={isConnecting}
+          >
+            {isConnecting ? '接続中...' : 'Joy-Con接続'}
+          </button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="text-green-400">🎮 Joy-Con接続済み</span>
+            <button
+              className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm"
+              onClick={disconnect}
+            >
+              切断
+            </button>
+          </div>
+        )}
+        {joyconError && (
+          <div className="text-red-400 text-sm mt-1 max-w-48">
+            {joyconError}
+          </div>
+        )}
+      </div>
+
       {/* スコア表示 */}
       <div className="absolute left-4 top-16 text-xl text-white">
         Score: {score}
