@@ -24,14 +24,14 @@ export default function Result() {
       if (!state?.chartId || !user || !state?.counts) return
 
       setSaveStatus('saving')
-      
+
       const accuracy = calculateAccuracy(state.counts)
       const scoreData = {
         score: state.score || 0,
         perfect: state.counts.perfect || 0,
         good: state.counts.good || 0,
         miss: state.counts.miss || 0,
-        accuracy
+        accuracy,
       }
 
       const result = await saveCustomChartScore(
@@ -342,19 +342,13 @@ export default function Result() {
         {state?.chartId && (
           <div className="text-center mb-6">
             {saveStatus === 'saving' && (
-              <div className="text-yellow-400 text-sm">
-                スコアを保存中...
-              </div>
+              <div className="text-yellow-400 text-sm">スコアを保存中...</div>
             )}
             {saveStatus === 'success' && (
-              <div className="text-green-400 text-sm">
-                ✅ {saveMessage}
-              </div>
+              <div className="text-green-400 text-sm">✅ {saveMessage}</div>
             )}
             {saveStatus === 'error' && (
-              <div className="text-red-400 text-sm">
-                ❌ {saveMessage}
-              </div>
+              <div className="text-red-400 text-sm">❌ {saveMessage}</div>
             )}
             {!user && (
               <div className="text-gray-400 text-sm">

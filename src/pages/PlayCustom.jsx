@@ -55,11 +55,11 @@ export default function PlayCustom() {
       // 多少の誤差を許容
       soundRef.current.stop()
       nav('/result', {
-        state: { 
-          score: scoreRef.current, 
+        state: {
+          score: scoreRef.current,
           counts: countsRef.current,
           chartId,
-          chartTitle: chartDataRef.current?.title || '無題'
+          chartTitle: chartDataRef.current?.title || '無題',
         },
       })
     }
@@ -143,11 +143,11 @@ export default function PlayCustom() {
             setTimeout(
               () =>
                 nav('/result', {
-                  state: { 
-                    score: scoreRef.current, 
+                  state: {
+                    score: scoreRef.current,
                     counts: countsRef.current,
                     chartId,
-                    chartTitle: chartDataRef.current?.title || '無題'
+                    chartTitle: chartDataRef.current?.title || '無題',
                   },
                 }),
               500

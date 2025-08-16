@@ -4,7 +4,7 @@ import { db } from '../firebase'
 /**
  * カスタム楽曲のスコアをFirestoreに保存する
  * @param {string} chartId - 楽曲ID
- * @param {string} userId - ユーザーID  
+ * @param {string} userId - ユーザーID
  * @param {string} userName - ユーザー名
  * @param {Object} scoreData - スコアデータ
  * @param {number} scoreData.score - 総スコア
@@ -14,14 +14,19 @@ import { db } from '../firebase'
  * @param {number} scoreData.accuracy - 精度（%）
  * @returns {Promise<{success: boolean, isNewRecord: boolean, message: string}>}
  */
-export async function saveCustomChartScore(chartId, userId, userName, scoreData) {
+export async function saveCustomChartScore(
+  chartId,
+  userId,
+  userName,
+  scoreData
+) {
   try {
     const rankingDocRef = doc(db, 'charts', chartId, 'rankings', userId)
-    
+
     // 既存スコアを確認
     const existingDoc = await getDoc(rankingDocRef)
     const existingScore = existingDoc.exists() ? existingDoc.data().score : 0
-    
+
     // 新しいスコアが既存スコアより高い場合のみ保存
     if (scoreData.score > existingScore) {
       await setDoc(rankingDocRef, {
@@ -32,21 +37,21 @@ export async function saveCustomChartScore(chartId, userId, userName, scoreData)
         accuracy: scoreData.accuracy,
         userName: userName,
         timestamp: serverTimestamp(),
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
       })
-      
+
       return {
         success: true,
         isNewRecord: true,
-        message: existingDoc.exists() 
-          ? `新記録！ ${existingScore} → ${scoreData.score}` 
-          : '初回記録を保存しました！'
+        message: existingDoc.exists()
+          ? `新記録！ ${existingScore} → ${scoreData.score}`
+          : '初回記録を保存しました！',
       }
     } else {
       return {
         success: true,
         isNewRecord: false,
-        message: `現在の最高記録: ${existingScore} （今回: ${scoreData.score}）`
+        message: `現在の最高記録: ${existingScore} （今回: ${scoreData.score}）`,
       }
     }
   } catch (error) {
@@ -54,7 +59,7 @@ export async function saveCustomChartScore(chartId, userId, userName, scoreData)
     return {
       success: false,
       isNewRecord: false,
-      message: 'スコアの保存に失敗しました'
+      message: 'スコアの保存に失敗しました',
     }
   }
 }
@@ -63,7 +68,7 @@ export async function saveCustomChartScore(chartId, userId, userName, scoreData)
  * 精度を計算する
  * @param {Object} counts - 判定回数
  * @param {number} counts.perfect - Perfect数
- * @param {number} counts.good - Good数  
+ * @param {number} counts.good - Good数
  * @param {number} counts.miss - Miss数
  * @returns {number} 精度（%、小数点第1位まで）
  */
