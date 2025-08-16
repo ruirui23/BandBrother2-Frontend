@@ -16,6 +16,7 @@ const JUDGE = { perfect: 24, good: 48 }
 // --- Player 1/2 キー設定をlocalStorageから取得 ---
 const P1_LANE_Y_POS = [-96, -32, 32, 96]
 const P2_LANE_Y_POS = [-96, -32, 32, 96]
+
 function getKeySettings() {
   try {
     return (
@@ -56,18 +57,6 @@ export default function TwoPlayerPlayCustom() {
 
   const p1ScoreRef = useRef({ perfect: 0, good: 0, miss: 0, score: 0 })
   const p2ScoreRef = useRef({ perfect: 0, good: 0, miss: 0, score: 0 })
-  const [p1Score, setP1Score] = useState({
-    perfect: 0,
-    good: 0,
-    miss: 0,
-    score: 0,
-  })
-  const [p2Score, setP2Score] = useState({
-    perfect: 0,
-    good: 0,
-    miss: 0,
-    score: 0,
-  })
 
   const [started, setStarted] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -89,6 +78,11 @@ export default function TwoPlayerPlayCustom() {
   const [judgementColor2, setJudgementColor2] = useState('text-yellow-400')
 
   const chartDataRef = useRef(null)
+
+  const p1ComboRef = useRef(0)
+  const p1MaxComboRef = useRef(0)
+  const p2ComboRef = useRef(0)
+  const p2MaxComboRef = useRef(0)
 
   useEffect(() => {
     const fetchChart = async () => {
@@ -141,8 +135,16 @@ export default function TwoPlayerPlayCustom() {
                 const resultData = {
                   counts1: p1ScoreRef.current,
                   score1: p1ScoreRef.current.score,
+                  lastCombo1:
+                    (p1ScoreRef.current.perfect ?? 0) +
+                    (p1ScoreRef.current.good ?? 0),
+                  maxCombo1: p1MaxComboRef.current,
                   counts2: p2ScoreRef.current,
                   score2: p2ScoreRef.current.score,
+                  lastCombo2:
+                    (p2ScoreRef.current.perfect ?? 0) +
+                    (p2ScoreRef.current.good ?? 0),
+                  maxCombo2: p2MaxComboRef.current,
                 }
                 nav('/result', { state: resultData })
               }, 500)
@@ -158,8 +160,6 @@ export default function TwoPlayerPlayCustom() {
 
     p1ScoreRef.current = { perfect: 0, good: 0, miss: 0, score: 0 }
     p2ScoreRef.current = { perfect: 0, good: 0, miss: 0, score: 0 }
-    setP1Score({ perfect: 0, good: 0, miss: 0, score: 0 })
-    setP2Score({ perfect: 0, good: 0, miss: 0, score: 0 })
     fetchChart()
     return () => {
       soundRef.current?.unload()
@@ -199,7 +199,7 @@ export default function TwoPlayerPlayCustom() {
         showJudgement1('Miss')
         setJudgementColor1('text-blue-400')
         p1ScoreRef.current.score -= 2
-        setP1Score({ ...p1ScoreRef.current })
+        p1ComboRef.current = 0 // ミスでコンボリセット
         p1Changed = true
         return { ...n, missed: true }
       }
@@ -213,7 +213,7 @@ export default function TwoPlayerPlayCustom() {
         showJudgement2('Miss')
         setJudgementColor2('text-blue-400')
         p2ScoreRef.current.score -= 2
-        setP2Score({ ...p2ScoreRef.current })
+        p2ComboRef.current = 0 // ミスでコンボリセット
         p2Changed = true
         return { ...n, missed: true }
       }
@@ -245,8 +245,14 @@ export default function TwoPlayerPlayCustom() {
         state: {
           counts1: p1ScoreRef.current,
           score1: p1ScoreRef.current.score,
+          lastCombo1:
+            (p1ScoreRef.current.perfect ?? 0) + (p1ScoreRef.current.good ?? 0),
+          maxCombo1: p1MaxComboRef.current,
           counts2: p2ScoreRef.current,
           score2: p2ScoreRef.current.score,
+          lastCombo2:
+            (p2ScoreRef.current.perfect ?? 0) + (p2ScoreRef.current.good ?? 0),
+          maxCombo2: p2MaxComboRef.current,
         },
       })
       return
@@ -290,6 +296,15 @@ export default function TwoPlayerPlayCustom() {
         scoreRef.current.perfect++
         scoreRef.current.score += 5
         if (isP1Key) {
+          p1ComboRef.current++
+          if (p1ComboRef.current > p1MaxComboRef.current)
+            p1MaxComboRef.current = p1ComboRef.current
+        } else {
+          p2ComboRef.current++
+          if (p2ComboRef.current > p2MaxComboRef.current)
+            p2MaxComboRef.current = p2ComboRef.current
+        }
+        if (isP1Key) {
           showJudgement1('Perfect')
           setJudgementColor1('text-yellow-400')
         } else {
@@ -300,6 +315,15 @@ export default function TwoPlayerPlayCustom() {
         playHitSound()
         scoreRef.current.good++
         scoreRef.current.score += 2
+        if (isP1Key) {
+          p1ComboRef.current++
+          if (p1ComboRef.current > p1MaxComboRef.current)
+            p1MaxComboRef.current = p1ComboRef.current
+        } else {
+          p2ComboRef.current++
+          if (p2ComboRef.current > p2MaxComboRef.current)
+            p2MaxComboRef.current = p2ComboRef.current
+        }
         if (isP1Key) {
           showJudgement1('Good')
           setJudgementColor1('text-orange-500')
@@ -406,7 +430,7 @@ export default function TwoPlayerPlayCustom() {
             key={`p1-hl-v-${index}`}
             style={{
               left: `${p1FieldCenterX - 128 + index * 64}px`,
-              top: `${screenHeight - 120}px`,
+              top: `${screenHeight - 136}px`,
             }}
             className="absolute"
           >
@@ -419,7 +443,7 @@ export default function TwoPlayerPlayCustom() {
             key={`p2-hl-v-${index}`}
             style={{
               left: `${p2FieldCenterX - 128 + index * 64}px`,
-              top: `${screenHeight - 120}px`,
+              top: `${screenHeight - 136}px`,
             }}
             className="absolute"
           >
@@ -461,16 +485,29 @@ export default function TwoPlayerPlayCustom() {
         {/* スコア・戻るボタン */}
         <div className="absolute left-4 top-4 text-xl">
           1P: {p1ScoreRef.current.score}
+          <br />
+          <span>
+            最大コンボ: {p1MaxComboRef.current} 合計コンボ:{' '}
+            {(p1ScoreRef.current.perfect ?? 0) + (p1ScoreRef.current.good ?? 0)}
+          </span>
         </div>
         <div className="absolute right-4 top-4 text-xl">
           2P: {p2ScoreRef.current.score}
+          <br />
+          <span>
+            最大コンボ: {p2MaxComboRef.current} 合計コンボ:{' '}
+            {(p2ScoreRef.current.perfect ?? 0) + (p2ScoreRef.current.good ?? 0)}
+          </span>
         </div>
-        <button
-          className="absolute left-1/2 top-4 -translate-x-1/2 px-4 py-2 bg-gray-600 text-white rounded z-30"
-          onClick={() => nav(-1)}
-        >
-          Back
-        </button>
+        {/* Backボタンは未開始時のみ表示 */}
+        {!started && (
+          <button
+            className="absolute left-1/2 top-4 -translate-x-1/2 px-4 py-2 bg-gray-600 text-white rounded z-30"
+            onClick={() => nav(-1)}
+          >
+            Back
+          </button>
+        )}
         {/* 中央仕切り線 */}
         <div className="absolute left-1/2 top-0 w-0.5 h-full bg-yellow-400 opacity-70 z-10" />
       </div>
@@ -569,20 +606,20 @@ export default function TwoPlayerPlayCustom() {
 
       <div className="absolute left-4 top-4 text-xl">
         1P: {p1ScoreRef.current.score}
+        <br />
+        <span>
+          最大コンボ: {p1MaxComboRef.current} 合計コンボ:{' '}
+          {(p1ScoreRef.current.perfect ?? 0) + (p1ScoreRef.current.good ?? 0)}
+        </span>
       </div>
       <div className="absolute left-4 bottom-4 text-xl">
         2P: {p2ScoreRef.current.score}
+        <br />
+        <span>
+          最大コンボ: {p2MaxComboRef.current} 合計コンボ:{' '}
+          {(p2ScoreRef.current.perfect ?? 0) + (p2ScoreRef.current.good ?? 0)}
+        </span>
       </div>
-      <div className="absolute left-4 top-4 text-xl">1P: {p1Score.score}</div>
-      <div className="absolute left-4 bottom-4 text-xl">
-        2P: {p2Score.score}
-      </div>
-      <button
-        className="absolute right-4 top-4 px-4 py-2 bg-gray-600 text-white rounded z-30"
-        onClick={() => nav(-1)}
-      >
-        Back
-      </button>
     </div>
   )
 }

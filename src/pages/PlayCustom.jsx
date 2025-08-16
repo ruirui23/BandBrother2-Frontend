@@ -59,6 +59,9 @@ export default function PlayCustom() {
         state: {
           score: scoreRef.current,
           counts: countsRef.current,
+          maxCombo: maxComboRef.current,
+          lastCombo:
+            (countsRef.current.perfect ?? 0) + (countsRef.current.good ?? 0),
           chartId,
           chartTitle: chartDataRef.current?.title || '無題',
         },
@@ -76,6 +79,7 @@ export default function PlayCustom() {
           return next
         })
         countsRef.current.miss += 1
+        comboRef.current = 0 // ミスでコンボリセット
         return { ...n, missed: true }
       }
       return n
@@ -95,11 +99,14 @@ export default function PlayCustom() {
   const countsRef = useRef({ perfect: 0, good: 0, miss: 0 })
   // スコア参照
   const scoreRef = useRef(0)
+  // 最大コンボ用
+  const comboRef = useRef(0)
+  const maxComboRef = useRef(0)
 
   // 画面サイズ
   const screenHeight = typeof window !== 'undefined' ? window.innerHeight : 800
   const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 600
-  const HIT_Y = screenHeight - 120
+  const HIT_Y = screenHeight - 100
   const HIT_X = 160
   const circleSize = 64
   const yPos = HIT_Y - circleSize / 4
@@ -147,6 +154,10 @@ export default function PlayCustom() {
                   state: {
                     score: scoreRef.current,
                     counts: countsRef.current,
+                    maxCombo: maxComboRef.current,
+                    lastCombo:
+                      (countsRef.current.perfect ?? 0) +
+                      (countsRef.current.good ?? 0),
                     chartId,
                     chartTitle: chartDataRef.current?.title || '無題',
                   },
@@ -200,6 +211,9 @@ export default function PlayCustom() {
           return next
         })
         countsRef.current.perfect += 1
+        comboRef.current++
+        if (comboRef.current > maxComboRef.current)
+          maxComboRef.current = comboRef.current
       } else {
         playHitSound()
         showJudgement('Good', 'text-orange-500')
@@ -209,6 +223,9 @@ export default function PlayCustom() {
           return next
         })
         countsRef.current.good += 1
+        comboRef.current++
+        if (comboRef.current > maxComboRef.current)
+          maxComboRef.current = comboRef.current
       }
       notesRef.current[bestMatchIndex].hit = true
     },
@@ -274,16 +291,14 @@ export default function PlayCustom() {
 
   return (
     <div className="relative h-screen overflow-hidden bg-black">
-      <button
-        className="absolute left-4 top-4 px-4 py-2 bg-gray-600 text-white rounded z-30"
-        onClick={() => nav(-1)}
-      >
-        Back
-      </button>
-
       {/* スコア表示 */}
       <div className="absolute left-4 top-16 text-xl text-white">
         Score: {score}
+        <br />
+        <span>
+          最大コンボ: {maxComboRef.current} 合計コンボ:{' '}
+          {(countsRef.current.perfect ?? 0) + (countsRef.current.good ?? 0)}
+        </span>
       </div>
       {/* 判定ライン・ノーツ描画 */}
       {isVertical ? (

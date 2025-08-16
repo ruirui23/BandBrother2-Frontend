@@ -41,9 +41,11 @@ export default function Play() {
   const nav = useNavigate()
 
   /* ---------- ゲーム終了時の処理 ---------- */
-  const handleGameEnd = ({ counts, score }) => {
+  const handleGameEnd = ({ counts, score, maxCombo }) => {
+    // 合計コンボ数 = perfect + good
+    const lastCombo = (counts.perfect ?? 0) + (counts.good ?? 0)
     setTimeout(() => {
-      nav('/result', { state: { counts, score } })
+      nav('/result', { state: { counts, score, maxCombo, lastCombo } })
     }, 500)
   }
 
@@ -61,6 +63,8 @@ export default function Play() {
     setOnJudgment,
     KEY_TO_LANE,
     VALID_KEYS,
+    maxCombo,
+    // combo,
   } = useGameCore(song, difficulty, handleGameEnd, keyMaps)
 
   /* ---------- 判定表示 ---------- */
@@ -120,23 +124,20 @@ export default function Play() {
   // 画面サイズ・判定枠座標
   const screenHeight = typeof window !== 'undefined' ? window.innerHeight : 800
   const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 600
-  const HIT_Y = screenHeight - 120
+  const HIT_Y = screenHeight - 100
   const HIT_X = 160
   const circleSize = 64
   const yPos = HIT_Y - circleSize / 4
 
   return (
     <div className="relative h-screen overflow-hidden bg-black">
-      <button
-        className="absolute left-4 top-4 px-4 py-2 bg-gray-600 text-white rounded z-30"
-        onClick={() => nav(-1)}
-      >
-        Back
-      </button>
-
       {/* スコア表示 */}
       <div className="absolute left-4 top-16 text-xl text-white">
         Score: {score}
+        <br />
+        <span>最大コンボ: {maxCombo ?? 0}</span>
+        <br />
+        <span>合計コンボ: {(counts.perfect ?? 0) + (counts.good ?? 0)}</span>
       </div>
       {/* 判定ライン・ノーツ描画 */}
       {isVertical ? (
