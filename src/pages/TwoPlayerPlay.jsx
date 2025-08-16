@@ -46,6 +46,26 @@ const ALL_VALID_KEYS = [
 ]
 
 export default function TwoPlayerPlay() {
+  // ノーツスピード倍率をlocalStorageから取得
+  const getNoteSpeedMultiplier = () => {
+    try {
+      return parseFloat(localStorage.getItem('noteSpeedMultiplier')) || 1.0
+    } catch {
+      return 1.0
+    }
+  }
+  const [noteSpeedMultiplier, setNoteSpeedMultiplier] = useState(
+    getNoteSpeedMultiplier()
+  )
+  useEffect(() => {
+    const onStorage = e => {
+      if (e.key === 'noteSpeedMultiplier') {
+        setNoteSpeedMultiplier(getNoteSpeedMultiplier())
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
   const { p1 = 'Easy' } = useParams() // URLパラメータから難易度を取得
   const nav = useNavigate()
   const offset = songData.offset ?? 0
@@ -217,7 +237,11 @@ export default function TwoPlayerPlay() {
       notes[player].forEach((n, index) => {
         if (n.lane !== targetLane || n.hit || n.missed) return
         const distance = Math.abs(
-          HIT_X - (HIT_X + (n.time - currentTime - offset) * NOTE_SPEED)
+          HIT_X -
+            (HIT_X +
+              (n.time - currentTime - offset) *
+                NOTE_SPEED *
+                noteSpeedMultiplier)
         )
         if (distance < JUDGE.good && distance < minDistance) {
           minDistance = distance
@@ -330,17 +354,69 @@ export default function TwoPlayerPlay() {
       <div className="relative h-screen w-screen overflow-hidden bg-black text-white">
         {/* 1P判定表示 */}
         <div
-          className={`absolute left-[25%] top-[40%] -translate-x-1/2 text-4xl font-bold drop-shadow transition-all duration-500 pointer-events-none z-20
+          className={`absolute left-[25%] top-[40%] -translate-x-1/2 text-2xl font-bold drop-shadow transition-all duration-500 pointer-events-none z-20
             ${visible1 ? 'opacity-100 scale-150' : 'opacity-0 scale-100'} ${judgementColor1}`}
         >
           {judgement1}
         </div>
         {/* 2P判定表示 */}
         <div
-          className={`absolute left-[75%] top-[40%] -translate-x-1/2 text-4xl font-bold drop-shadow transition-all duration-500 pointer-events-none z-20
+          className={`absolute left-[75%] top-[40%] -translate-x-1/2 text-2xl font-bold drop-shadow transition-all duration-500 pointer-events-none z-20
             ${visible2 ? 'opacity-100 scale-150' : 'opacity-0 scale-100'} ${judgementColor2}`}
         >
           {judgement2}
+        </div>
+        {/* 1PリッチUI 左上（小さく） */}
+        <div className="absolute left-2 top-2 flex flex-col gap-1 z-20 items-start">
+          <div className="text-base font-extrabold text-yellow-300 drop-shadow-lg">
+            <span className="text-white text-xs align-top">Score</span>
+            <span className="ml-1 text-yellow-400 text-lg">
+              {p1ScoreRef.current.score}
+            </span>
+          </div>
+          <div className="flex gap-1 mt-1">
+            <div className="text-xs font-bold text-blue-300 bg-black/60 rounded px-1.5 py-0.5 border border-blue-400 shadow">
+              最大コンボ
+              <br />
+              <span className="text-base text-blue-200">
+                {p1MaxComboRef.current}
+              </span>
+            </div>
+            <div className="text-xs font-bold text-pink-300 bg-black/60 rounded px-1.5 py-0.5 border border-pink-400 shadow">
+              合計コンボ
+              <br />
+              <span className="text-base text-pink-200">
+                {(p1ScoreRef.current.perfect ?? 0) +
+                  (p1ScoreRef.current.good ?? 0)}
+              </span>
+            </div>
+          </div>
+        </div>
+        {/* 2PリッチUI 右上（小さく） */}
+        <div className="absolute right-2 top-2 flex flex-col gap-1 z-20 items-end">
+          <div className="text-base font-extrabold text-yellow-300 drop-shadow-lg">
+            <span className="text-white text-xs align-top">Score</span>
+            <span className="ml-1 text-yellow-400 text-lg">
+              {p2ScoreRef.current.score}
+            </span>
+          </div>
+          <div className="flex gap-1 mt-1">
+            <div className="text-xs font-bold text-blue-300 bg-black/60 rounded px-1.5 py-0.5 border border-blue-400 shadow">
+              最大コンボ
+              <br />
+              <span className="text-base text-blue-200">
+                {p2MaxComboRef.current}
+              </span>
+            </div>
+            <div className="text-xs font-bold text-pink-300 bg-black/60 rounded px-1.5 py-0.5 border border-pink-400 shadow">
+              合計コンボ
+              <br />
+              <span className="text-base text-pink-200">
+                {(p2ScoreRef.current.perfect ?? 0) +
+                  (p2ScoreRef.current.good ?? 0)}
+              </span>
+            </div>
+          </div>
         </div>
         {/* 1P判定枠 */}
         {P1_LANE_Y_POS.map((y, index) => (
@@ -380,7 +456,11 @@ export default function TwoPlayerPlay() {
             <Note
               key={n.id}
               x={p1FieldCenterX - 96 + n.lane * 64}
-              y={screenHeight - 120 - (n.time - time - offset) * NOTE_SPEED}
+              y={
+                screenHeight -
+                120 -
+                (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier
+              }
               lane={n.lane}
             />
           ))}
@@ -396,27 +476,14 @@ export default function TwoPlayerPlay() {
             <Note
               key={n.id}
               x={p2FieldCenterX - 96 + n.lane * 64}
-              y={screenHeight - 120 - (n.time - time - offset) * NOTE_SPEED}
+              y={
+                screenHeight -
+                120 -
+                (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier
+              }
               lane={n.lane}
             />
           ))}
-        {/* スコア・戻るボタン */}
-        <div className="absolute left-4 top-4 text-xl">
-          1P: {p1ScoreRef.current.score}
-          <br />
-          <span>
-            最大コンボ: {p1MaxComboRef.current} 合計コンボ:{' '}
-            {(p1ScoreRef.current.perfect ?? 0) + (p1ScoreRef.current.good ?? 0)}
-          </span>
-        </div>
-        <div className="absolute right-4 top-4 text-xl">
-          2P: {p2ScoreRef.current.score}
-          <br />
-          <span>
-            最大コンボ: {p2MaxComboRef.current} 合計コンボ:{' '}
-            {(p2ScoreRef.current.perfect ?? 0) + (p2ScoreRef.current.good ?? 0)}
-          </span>
-        </div>
         {/* Backボタンは未開始時のみ表示 */}
         {!started && (
           <button
@@ -437,9 +504,7 @@ export default function TwoPlayerPlay() {
       {/* --- 1P判定表示（上画面中央） --- */}
       <div
         className={`absolute top-[35%] left-1/2 transform -translate-x-1/2 text-4xl font-bold drop-shadow transition-all duration-500 pointer-events-none z-20
-          ${
-            visible1 ? 'opacity-100 scale-150' : 'opacity-0 scale-100'
-          } ${judgementColor1}`}
+          ${visible1 ? 'opacity-100 scale-150' : 'opacity-0 scale-100'} ${judgementColor1}`}
       >
         {judgement1}
       </div>
@@ -447,9 +512,7 @@ export default function TwoPlayerPlay() {
       {/* --- 2P判定表示（下画面中央） --- */}
       <div
         className={`absolute top-[75%] left-1/2 transform -translate-x-1/2 text-4xl font-bold drop-shadow transition-all duration-500 pointer-events-none z-20
-          ${
-            visible2 ? 'opacity-100 scale-150' : 'opacity-0 scale-100'
-          } ${judgementColor2}`}
+          ${visible2 ? 'opacity-100 scale-150' : 'opacity-0 scale-100'} ${judgementColor2}`}
       >
         {judgement2}
       </div>
@@ -478,12 +541,41 @@ export default function TwoPlayerPlay() {
             return (
               <Note
                 key={n.id}
-                x={HIT_X + (n.time - time - offset) * NOTE_SPEED}
+                x={
+                  HIT_X +
+                  (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier
+                }
                 y={yPos}
                 lane={n.lane}
               />
             )
           })}
+        {/* 1PリッチUI 横並び */}
+        <div className="absolute left-4 top-2 flex flex-row items-center gap-2 z-20">
+          <div className="text-base font-extrabold text-yellow-300 drop-shadow-lg">
+            <span className="text-white text-xs align-top">Score</span>
+            <span className="ml-1 text-yellow-400 text-lg">
+              {p1ScoreRef.current.score}
+            </span>
+          </div>
+          <div className="flex gap-1 ml-2">
+            <div className="text-xs font-bold text-blue-300 bg-black/60 rounded px-1.5 py-0.5 border border-blue-400 shadow">
+              最大コンボ
+              <br />
+              <span className="text-base text-blue-200">
+                {p1MaxComboRef.current}
+              </span>
+            </div>
+            <div className="text-xs font-bold text-pink-300 bg-black/60 rounded px-1.5 py-0.5 border border-pink-400 shadow">
+              合計コンボ
+              <br />
+              <span className="text-base text-pink-200">
+                {(p1ScoreRef.current.perfect ?? 0) +
+                  (p1ScoreRef.current.good ?? 0)}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* --- Player 2 Field (Bottom) --- */}
@@ -510,30 +602,41 @@ export default function TwoPlayerPlay() {
             return (
               <Note
                 key={n.id}
-                x={HIT_X + (n.time - time - offset) * NOTE_SPEED}
+                x={
+                  HIT_X +
+                  (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier
+                }
                 y={yPos}
                 lane={n.lane}
               />
             )
           })}
-      </div>
-
-      {/* --- スコアと戻るボタン --- */}
-      <div className="absolute left-4 top-4 text-xl">
-        1P: {p1ScoreRef.current.score}
-        <br />
-        <span>
-          最大コンボ: {p1MaxComboRef.current} 合計コンボ:{' '}
-          {(p1ScoreRef.current.perfect ?? 0) + (p1ScoreRef.current.good ?? 0)}
-        </span>
-      </div>
-      <div className="absolute left-4 bottom-4 text-xl">
-        2P: {p2ScoreRef.current.score}
-        <br />
-        <span>
-          最大コンボ: {p2MaxComboRef.current} 合計コンボ:{' '}
-          {(p2ScoreRef.current.perfect ?? 0) + (p2ScoreRef.current.good ?? 0)}
-        </span>
+        {/* 2PリッチUI 横並び */}
+        <div className="absolute left-4 top-2 flex flex-row items-center gap-2 z-20">
+          <div className="text-base font-extrabold text-yellow-300 drop-shadow-lg">
+            <span className="text-white text-xs align-top">Score</span>
+            <span className="ml-1 text-yellow-400 text-lg">
+              {p2ScoreRef.current.score}
+            </span>
+          </div>
+          <div className="flex gap-1 ml-2">
+            <div className="text-xs font-bold text-blue-300 bg-black/60 rounded px-1.5 py-0.5 border border-blue-400 shadow">
+              最大コンボ
+              <br />
+              <span className="text-base text-blue-200">
+                {p2MaxComboRef.current}
+              </span>
+            </div>
+            <div className="text-xs font-bold text-pink-300 bg-black/60 rounded px-1.5 py-0.5 border border-pink-400 shadow">
+              合計コンボ
+              <br />
+              <span className="text-base text-pink-200">
+                {(p2ScoreRef.current.perfect ?? 0) +
+                  (p2ScoreRef.current.good ?? 0)}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
