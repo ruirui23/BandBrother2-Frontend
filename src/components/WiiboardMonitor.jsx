@@ -11,7 +11,9 @@ const WiiMonitor = () => {
       socket.onmessage = event => {
         const data = JSON.parse(event.data)
         if (data.action === 'weightDetected') {
-          window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F' }))
+          window.dispatchEvent(
+            new KeyboardEvent('keydown', { key: 'F', code: 'KeyF' })
+          )
         }
       }
       setWs(socket)
