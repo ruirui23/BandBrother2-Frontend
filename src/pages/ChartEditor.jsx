@@ -108,29 +108,50 @@ const EditorLane = React.memo(
             style={{ width: gridWidth, height: '100%' }}
             onClick={handleGridClick}
           >
+            {/* 拍ごとの縦線 */}
             {Array.from({ length: beatCount + 1 }).map((_, i) => (
               <div
-                key={i}
+                key={"beat-" + i}
                 className="absolute top-0 bottom-0 w-px bg-white/20"
                 style={{ left: i * gridStep }}
               />
             ))}
-            {notes
-              .filter(n => n.lane === lane)
-              .map((n, i) => (
-                <div
-                  key={i}
-                  className={`absolute rounded-full ${colorConfig.note} ${colorConfig.noteBorder} border-2 shadow-lg`}
-                  style={{
-                    left: getX(n.time) - NOTE_RADIUS,
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    width: NOTE_RADIUS * 2,
-                    height: NOTE_RADIUS * 2,
-                    zIndex: 20,
-                  }}
-                />
-              ))}
+            {/* 1秒ごとのラベル */}
+            {Array.from({ length: Math.floor(duration) + 1 }).map((_, sec) => (
+              <div
+                key={"sec-label-" + sec}
+                className="absolute text-xs text-white/80 select-none"
+                style={{
+                  left: (sec / duration) * gridWidth,
+                  top: 2,
+                  transform: 'translateX(-50%)',
+                  pointerEvents: 'none',
+                  zIndex: 30,
+                  fontWeight: 'bold',
+                  textShadow: '0 0 4px #000, 0 0 2px #000',
+                }}
+              >
+                {sec + 1}
+              </div>
+            ))}
+            {React.useMemo(() => (
+              notes
+                .filter(n => n.lane === lane)
+                .map((n, i) => (
+                  <div
+                    key={i}
+                    className={`absolute rounded-full ${colorConfig.note} ${colorConfig.noteBorder} border-2 shadow-lg`}
+                    style={{
+                      left: getX(n.time) - NOTE_RADIUS,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      width: NOTE_RADIUS * 2,
+                      height: NOTE_RADIUS * 2,
+                      zIndex: 20,
+                    }}
+                  />
+                ))
+            ), [notes, lane, colorConfig, getX])}
           </div>
         </div>
       )
@@ -603,20 +624,32 @@ export default function ChartEditor() {
 
           {/* Right Panel (Editor Lanes) */}
           <div className="flex-grow flex flex-col gap-2 items-center">
-            {LANE_COLORS.map((color, index) => (
-              <EditorLane
-                ref={el => (laneRefs.current[index] = el)}
-                key={index}
-                lane={index}
-                notes={notes}
-                onNotesChange={setNotes}
-                duration={duration}
-                gridWidth={GRID_WIDTH}
-                beatCount={beatCount}
-                gridStep={gridStep}
-                colorConfig={color}
-              />
-            ))}
+            {LANE_COLORS.map((color, index) => {
+              // 各レーンごとにノーツをフィルタ
+              const laneNotes = notes.filter(n => n.lane === index)
+              // レーンごとにonNotesChangeをラップ
+              const handleLaneNotesChange = newLaneNotes => {
+                // 他レーンのノーツはそのまま、該当レーンだけ差し替え
+                setNotes(prevNotes => {
+                  const otherNotes = prevNotes.filter(n => n.lane !== index)
+                  return [...otherNotes, ...newLaneNotes].sort((a, b) => a.time - b.time)
+                })
+              }
+              return (
+                <EditorLane
+                  ref={el => (laneRefs.current[index] = el)}
+                  key={index}
+                  lane={index}
+                  notes={laneNotes}
+                  onNotesChange={handleLaneNotesChange}
+                  duration={duration}
+                  gridWidth={GRID_WIDTH}
+                  beatCount={beatCount}
+                  gridStep={gridStep}
+                  colorConfig={color}
+                />
+              )
+            })}
             <span className="text-xs text-gray-400 mt-2">
               各レーンをクリックしてノーツを追加/削除
             </span>
