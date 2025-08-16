@@ -40,6 +40,7 @@ export default function PlayCustom() {
   const notesRef = useRef([])
   const [started, setStarted] = useState(false)
   const [time, setTime] = useState(0)
+
   // ゲームループで時間を進める
   useGameLoop(() => {
     if (!started || !soundRef.current) return
@@ -85,7 +86,7 @@ export default function PlayCustom() {
     })
   })
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [_error, setError] = useState(null)
   const soundRef = useRef(null)
   const [score, setScore] = useState(0)
   const [judgement, setJudgement] = useState('')
@@ -253,10 +254,10 @@ export default function PlayCustom() {
         Loading Chart...
       </div>
     )
-  if (error)
+  if (_error)
     return (
       <div className="flex items-center justify-center h-screen bg-black text-red-500 text-2xl">
-        {error}
+        {_error}
       </div>
     )
   if (!started) {
