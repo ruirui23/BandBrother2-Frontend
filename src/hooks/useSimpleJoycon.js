@@ -48,8 +48,27 @@ export default function useSimpleJoycon() {
       if (typeof joyCon.addEventListener === 'function') {
         joyCon.addEventListener('hidinput', ({ detail }) => {
           // Aボタン（右ジョイコンの下ボタン）が押されたかチェック
-          if (detail.buttonStatus && detail.buttonStatus.a && onButtonPressRef.current) {
-            onButtonPressRef.current('K') // Kキーとして扱う
+          if (detail.buttonStatus && detail.buttonStatus.a) {
+            // グローバルキーイベントとしてAボタン押下をシミュレート
+            const keySettings = JSON.parse(localStorage.getItem('keySettings') || '{}')
+            const singleKeys = keySettings.single || ['D', 'F', 'J', 'K']
+            const fourthLaneKey = singleKeys[3] || 'K'
+            
+            // カスタムキーボードイベントを作成
+            const keyboardEvent = new KeyboardEvent('keydown', {
+              key: fourthLaneKey,
+              code: `Key${fourthLaneKey.toUpperCase()}`,
+              bubbles: true,
+              cancelable: true
+            })
+            
+            // グローバルにキーイベントを発生
+            window.dispatchEvent(keyboardEvent)
+            
+            // 従来のコールバック方式も維持（互換性のため）
+            if (onButtonPressRef.current) {
+              onButtonPressRef.current(fourthLaneKey)
+            }
           }
         })
       }

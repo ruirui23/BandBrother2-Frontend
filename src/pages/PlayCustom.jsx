@@ -8,7 +8,6 @@ import { doc, getDoc } from 'firebase/firestore'
 import { HIT_X, NOTE_SPEED, WINDOW_SEC } from '../constants'
 import Note from '../components/Note'
 import HitLine from '../components/HitLine'
-import useSimpleJoycon from '../hooks/useSimpleJoycon'
 
 const JUDGE = { perfect: 24, good: 48 }
 
@@ -42,8 +41,6 @@ export default function PlayCustom() {
   const [started, setStarted] = useState(false)
   const [time, setTime] = useState(0)
   
-  // ジョイコン機能
-  const { isConnected, isConnecting, error: joyconError, connect, disconnect, setOnButtonPress } = useSimpleJoycon()
   // ゲームループで時間を進める
   useGameLoop(() => {
     if (!started || !soundRef.current) return
@@ -218,35 +215,6 @@ export default function PlayCustom() {
     [started, offset]
   )
 
-  // ジョイコンボタン入力をキー入力として処理
-  useEffect(() => {
-    setOnButtonPress((key) => {
-      // ゲーム未開始時は開始
-      if (!started && !soundRef.current?.playing()) {
-        soundRef.current?.play()
-        setStarted(true)
-      }
-      
-      // 現在のキー設定から4番目のレーン（インデックス3）のキーを取得
-      const currentKeyMaps = getKeyMaps()
-      const fourthLaneKeys = Object.keys(currentKeyMaps.KEY_TO_LANE).filter(
-        keyCode => currentKeyMaps.KEY_TO_LANE[keyCode] === 3
-      )
-      
-      if (fourthLaneKeys.length > 0) {
-        const keyCode = fourthLaneKeys[0] // 4番目のレーンのキーコード
-        const keyChar = keyCode.replace('Key', '') // 'KeyK' -> 'K'
-        
-        const simulatedEvent = {
-          code: keyCode,
-          key: keyChar,
-          preventDefault: () => {},
-          stopPropagation: () => {}
-        }
-        onKey(simulatedEvent)
-      }
-    })
-  }, [setOnButtonPress, started, onKey])
 
   useEffect(() => {
     if (loading) return
@@ -313,38 +281,6 @@ export default function PlayCustom() {
       >
         Back
       </button>
-      
-      {/* ジョイコン接続UI */}
-      <div className="absolute right-4 top-4 z-30">
-        {!isConnected ? (
-          <button
-            className={`px-4 py-2 text-white rounded ${
-              isConnecting 
-                ? 'bg-yellow-600 cursor-not-allowed' 
-                : 'bg-blue-600 hover:bg-blue-700'
-            }`}
-            onClick={connect}
-            disabled={isConnecting}
-          >
-            {isConnecting ? '接続中...' : 'Joy-Con接続'}
-          </button>
-        ) : (
-          <div className="flex items-center gap-2">
-            <span className="text-green-400">🎮 Joy-Con接続済み</span>
-            <button
-              className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm"
-              onClick={disconnect}
-            >
-              切断
-            </button>
-          </div>
-        )}
-        {joyconError && (
-          <div className="text-red-400 text-sm mt-1 max-w-48">
-            {joyconError}
-          </div>
-        )}
-      </div>
 
       {/* スコア表示 */}
       <div className="absolute left-4 top-16 text-xl text-white">
