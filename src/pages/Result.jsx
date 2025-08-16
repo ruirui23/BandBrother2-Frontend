@@ -38,6 +38,8 @@ export default function Result() {
         good: state.counts.good || 0,
         miss: state.counts.miss || 0,
         accuracy,
+        maxCombo: state.maxCombo ?? 0,
+        lastCombo: state.lastCombo ?? 0,
       }
 
       const result = await saveCustomChartScore(
@@ -168,7 +170,7 @@ export default function Result() {
 
   // 二人プレイ用（ローカル）
   if (state && state.counts1 && state.counts2) {
-    const { counts1, counts2, score1, score2 } = state
+    const { counts1, counts2, score1, score2, lastCombo1, lastCombo2, maxCombo1, maxCombo2 } = state
     const c1 = counts1
     const c2 = counts2
     const s1 = score1 ?? 0
@@ -177,17 +179,19 @@ export default function Result() {
     const total1 = (c1.perfect ?? 0) + (c1.good ?? 0) + (c1.miss ?? 0)
     const accuracy1 =
       total1 > 0
-        ? Math.round(
-            (((c1.perfect ?? 0) + (c1.good ?? 0) * 0.5) / total1) * 100
-          )
+        ? Math.round(((c1.perfect + (c1.good ?? 0) * 0.5) / total1) * 100)
         : 0
     const total2 = (c2.perfect ?? 0) + (c2.good ?? 0) + (c2.miss ?? 0)
     const accuracy2 =
       total2 > 0
-        ? Math.round(
-            (((c2.perfect ?? 0) + (c2.good ?? 0) * 0.5) / total2) * 100
-          )
+        ? Math.round(((c2.perfect + (c2.good ?? 0) * 0.5) / total2) * 100)
         : 0
+    // 合計コンボ数
+    const combo1 = lastCombo1 ?? (c1.perfect ?? 0) + (c1.good ?? 0)
+    const combo2 = lastCombo2 ?? (c2.perfect ?? 0) + (c2.good ?? 0)
+    // 最大コンボ数
+    const max1 = maxCombo1 ?? 0
+    const max2 = maxCombo2 ?? 0
 
     let result1 = '',
       result2 = '',
@@ -257,6 +261,12 @@ export default function Result() {
                 </div>
                 <div className="text-sm text-gray-400">Accuracy</div>
               </div>
+              <div className="flex flex-col items-center gap-2">
+                {/* <div className="text-2xl font-bold text-yellow-400">{s1}</div> */}
+                {/* <div className="text-sm text-gray-400">Score</div> */}
+                <div className="text-lg text-purple-400">最大コンボ: {max1}</div>
+                <div className="text-lg text-purple-400">合計コンボ: {combo1}</div>
+              </div>
             </div>
 
             <div className="w-px h-64 bg-gray-600"></div>
@@ -298,6 +308,12 @@ export default function Result() {
                 </div>
                 <div className="text-sm text-gray-400">Accuracy</div>
               </div>
+              <div className="flex flex-col items-center gap-2">
+                {/* <div className="text-2xl font-bold text-yellow-400">{s2}</div> */}
+                {/* <div className="text-sm text-gray-400">Score</div> */}
+                <div className="text-lg text-purple-400">最大コンボ: {max2}</div>
+                <div className="text-lg text-purple-400">合計コンボ: {combo2}</div>
+              </div>
             </div>
           </div>
 
@@ -312,168 +328,174 @@ export default function Result() {
     )
   }
 
-  // 1人プレイ用
-  const { counts = {}, score = 0 } = state || {}
-  const perfect = counts.perfect ?? 0
-  const good = counts.good ?? 0
-  const miss = counts.miss ?? 0
-  const total = perfect + good + miss
-  const accuracy =
-    total > 0 ? Math.round(((perfect + good * 0.5) / total) * 100) : 0
+  // 通常1人プレイ・カスタム譜面リザルト
+  if (state && state.counts && !state.counts1 && !state.counts2) {
+    const { counts, score, maxCombo, lastCombo } = state
+    const perfect = counts.perfect ?? 0
+    const good = counts.good ?? 0
+    const miss = counts.miss ?? 0
+    const total = perfect + good + miss
+    const accuracy =
+      total > 0 ? Math.round(((perfect + good * 0.5) / total) * 100) : 0
+    const combo = lastCombo ?? (perfect + good)
+    const max = maxCombo ?? 0
 
-  return (
-    <div className="h-screen flex flex-col items-center justify-center bg-slate-900 text-white">
-      <div
-        className={`flex flex-col items-center gap-6 transition-all duration-1000 ${
-          showResult ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-        }`}
-      >
-        {/* タイトル */}
-        <h1 className="text-4xl font-bold">RESULT</h1>
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-slate-900 text-white">
+        <div
+          className={`flex flex-col items-center gap-6 transition-all duration-1000 ${
+            showResult ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+          }`}
+        >
+          {/* タイトル */}
+          <h1 className="text-4xl font-bold">RESULT</h1>
 
-        {/* メインスコア */}
-        <div className="text-center">
-          <div className="text-6xl font-bold text-yellow-400 mb-2">
-            {score.toLocaleString()}
-          </div>
-          <div className="text-lg text-gray-300">TOTAL SCORE</div>
-        </div>
-
-        {/* 判定詳細 */}
-        <div className="flex gap-8 mb-6">
+          {/* メインスコア */}
           <div className="text-center">
-            <div className="text-2xl font-bold text-green-400">{perfect}</div>
-            <div className="text-sm text-gray-400">Perfect</div>
+            <div className="text-6xl font-bold text-yellow-400 mb-2">
+              {score.toLocaleString()}
+            </div>
+            <div className="text-lg text-gray-300">TOTAL SCORE</div>
+            <div className="text-lg text-purple-400 mt-2">最大コンボ: {max}</div>
+            <div className="text-lg text-purple-400">合計コンボ: {combo}</div>
           </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-blue-400">{good}</div>
-            <div className="text-sm text-gray-400">Good</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-red-400">{miss}</div>
-            <div className="text-sm text-gray-400">Miss</div>
-          </div>
-        </div>
 
-        {/* 精度率 */}
-        <div className="text-center mb-6">
-          <div className="text-xl font-bold text-purple-400">{accuracy}%</div>
-          <div className="text-sm text-gray-400">Accuracy</div>
-        </div>
+          {/* 判定詳細 */}
+          <div className="flex gap-8 mb-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-400">{perfect}</div>
+              <div className="text-sm text-gray-400">Perfect</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-400">{good}</div>
+              <div className="text-sm text-gray-400">Good</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-red-400">{miss}</div>
+              <div className="text-sm text-gray-400">Miss</div>
+            </div>
+          </div>
 
-        {/* スコア保存状況（カスタム楽曲の場合のみ） */}
-        {state?.chartId && (
+          {/* 精度率 */}
           <div className="text-center mb-6">
-            {saveStatus === 'saving' && (
-              <div className="text-yellow-400 text-sm">スコアを保存中...</div>
-            )}
-            {saveStatus === 'success' && (
-              <div className="text-green-400 text-sm">✅ {saveMessage}</div>
-            )}
-            {saveStatus === 'error' && (
-              <div className="text-red-400 text-sm">❌ {saveMessage}</div>
-            )}
-            {!user && (
-              <div className="text-gray-400 text-sm">
-                ログインするとスコアが保存されます
-              </div>
-            )}
+            <div className="text-xl font-bold text-purple-400">{accuracy}%</div>
+            <div className="text-sm text-gray-400">Accuracy</div>
           </div>
-        )}
 
-        {/* ランキング情報（カスタム楽曲の場合のみ） */}
-        {state?.chartId && (
-          <div className="mb-6 p-4 bg-white/5 rounded-lg border border-white/10">
-            <h3 className="text-lg font-bold text-center text-white mb-4">
-              🏆 ランキング TOP3
-            </h3>
+          {/* スコア保存状況（カスタム楽曲の場合のみ） */}
+          {state?.chartId && (
+            <div className="text-center mb-6">
+              {saveStatus === 'saving' && (
+                <div className="text-yellow-400 text-sm">スコアを保存中...</div>
+              )}
+              {saveStatus === 'success' && (
+                <div className="text-green-400 text-sm">✅ {saveMessage}</div>
+              )}
+              {saveStatus === 'error' && (
+                <div className="text-red-400 text-sm">❌ {saveMessage}</div>
+              )}
+              {!user && (
+                <div className="text-gray-400 text-sm">
+                  ログインするとスコアが保存されます
+                </div>
+              )}
+            </div>
+          )}
 
-            {rankingsLoading && (
-              <div className="text-center text-gray-400 text-sm">
-                ランキングを取得中...
-              </div>
-            )}
+          {/* ランキング情報（カスタム楽曲の場合のみ） */}
+          {state?.chartId && (
+            <div className="mb-6 p-4 bg-white/5 rounded-lg border border-white/10">
+              <h3 className="text-lg font-bold text-center text-white mb-4">
+                🏆 ランキング TOP3
+              </h3>
 
-            {!rankingsLoading && rankings.length > 0 && (
-              <div className="space-y-3">
-                {rankings.map(ranking => {
-                  const getRankEmoji = rank => {
-                    switch (rank) {
-                      case 1:
-                        return '🥇'
-                      case 2:
-                        return '🥈'
-                      case 3:
-                        return '🥉'
-                      default:
-                        return '🏅'
+              {rankingsLoading && (
+                <div className="text-center text-gray-400 text-sm">
+                  ランキングを取得中...
+                </div>
+              )}
+
+              {!rankingsLoading && rankings.length > 0 && (
+                <div className="space-y-3">
+                  {rankings.map(ranking => {
+                    const getRankEmoji = rank => {
+                      switch (rank) {
+                        case 1:
+                          return '🥇'
+                        case 2:
+                          return '🥈'
+                        case 3:
+                          return '🥉'
+                        default:
+                          return '🏅'
+                      }
                     }
-                  }
 
-                  const getRankColor = rank => {
-                    switch (rank) {
-                      case 1:
-                        return 'text-yellow-400'
-                      case 2:
-                        return 'text-gray-300'
-                      case 3:
-                        return 'text-amber-600'
-                      default:
-                        return 'text-gray-400'
+                    const getRankColor = rank => {
+                      switch (rank) {
+                        case 1:
+                          return 'text-yellow-400'
+                        case 2:
+                          return 'text-gray-300'
+                        case 3:
+                          return 'text-amber-600'
+                        default:
+                          return 'text-gray-400'
+                      }
                     }
-                  }
 
-                  return (
-                    <div
-                      key={ranking.userId}
-                      className="flex items-center justify-between p-3 bg-white/5 rounded-lg"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-xl">
-                          {getRankEmoji(ranking.rank)}
-                        </span>
-                        <div>
-                          <div className="font-semibold text-white">
-                            {ranking.userName}
+                    return (
+                      <div
+                        key={ranking.userId}
+                        className="flex items-center justify-between p-3 bg-white/5 rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-xl">
+                            {getRankEmoji(ranking.rank)}
+                          </span>
+                          <div>
+                            <div className="font-semibold text-white">
+                              {ranking.userName}
+                            </div>
+                            <div className="text-xs text-gray-400">
+                              Perfect: {ranking.perfect} | Good: {ranking.good} |
+                              Miss: {ranking.miss}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div
+                            className={`text-xl font-bold ${getRankColor(ranking.rank)}`}
+                          >
+                            {ranking.score.toLocaleString()}
                           </div>
                           <div className="text-xs text-gray-400">
-                            Perfect: {ranking.perfect} | Good: {ranking.good} |
-                            Miss: {ranking.miss}
+                            精度: {ranking.accuracy}%
                           </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div
-                          className={`text-xl font-bold ${getRankColor(ranking.rank)}`}
-                        >
-                          {ranking.score.toLocaleString()}
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          精度: {ranking.accuracy}%
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
+                    )
+                  })}
+                </div>
+              )}
 
-            {!rankingsLoading && rankings.length === 0 && (
-              <div className="text-center text-gray-400 text-sm">
-                まだ記録がありません
-              </div>
-            )}
-          </div>
-        )}
+              {!rankingsLoading && rankings.length === 0 && (
+                <div className="text-center text-gray-400 text-sm">
+                  まだ記録がありません
+                </div>
+              )}
+            </div>
+          )}
 
-        {/* ホームに戻るボタン */}
-        <Link
-          to="/"
-          className="px-6 py-3 bg-blue-500 rounded-lg text-white hover:bg-blue-600 transition-colors"
-        >
-          ホームに戻る
-        </Link>
+          {/* ホームに戻るボタン */}
+          <Link
+            to="/"
+            className="px-6 py-3 bg-blue-500 rounded-lg text-white hover:bg-blue-600 transition-colors"
+          >
+            ホームに戻る
+          </Link>
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
 }

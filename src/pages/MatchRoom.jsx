@@ -138,6 +138,25 @@ const MatchRoom = () => {
       })
   }
 
+  // --- パフォーマンス計測・警告 ---
+  // このコードは開発者向けの警告のみを出します。UIやゲームロジックには影響しません。
+  if (typeof window !== 'undefined') {
+    let last = performance.now()
+    let frames = 0
+    setInterval(() => {
+      if (frames < 50) {
+        console.warn('[BandBrother2] パフォーマンス警告: FPS低下中 (' + frames + 'fps)')
+      }
+      frames = 0
+      last = performance.now()
+    }, 1000)
+    function countFrame() {
+      frames++
+      requestAnimationFrame(countFrame)
+    }
+    requestAnimationFrame(countFrame)
+  }
+
   return (
     <div>
       <h1 className="text-4xl font-bold text-center mt-10">マッチングルーム</h1>

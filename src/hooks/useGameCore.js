@@ -112,7 +112,7 @@ export default function useGameCore(songData, difficulty, onGameEnd, keyMaps) {
         setGameState('finished')
         sound.stop()
         if (onGameEnd) {
-          onGameEnd({ counts, score, time })
+          onGameEnd({ counts, score, maxCombo: maxComboRef.current, lastCombo: comboRef.current })
         }
       }
     }
@@ -123,6 +123,10 @@ export default function useGameCore(songData, difficulty, onGameEnd, keyMaps) {
   const setOnJudgment = useCallback(callback => {
     onJudgmentRef.current = callback || (() => {})
   }, [])
+
+  // --- combo, maxCombo管理 ---
+  const comboRef = useRef(0)
+  const maxComboRef = useRef(0)
 
   // 共通のノーツ判定ロジック
   const judgeNote = useCallback(
@@ -168,6 +172,12 @@ export default function useGameCore(songData, difficulty, onGameEnd, keyMaps) {
       // ノーツを「ヒット済み」にマーク
       note.hit = true
       setNotes([...notesRef.current])
+
+      // コンボ数を更新
+      comboRef.current++
+      if (comboRef.current > maxComboRef.current) {
+        maxComboRef.current = comboRef.current
+      }
 
       return { judgmentType, note }
     },
@@ -235,6 +245,7 @@ export default function useGameCore(songData, difficulty, onGameEnd, keyMaps) {
     const updatedNotes = notesRef.current.map(n => {
       if (!n.hit && !n.missed && time - (n.time - offset) > 0.2) {
         add('miss')
+        comboRef.current = 0 // ★ミス時にコンボリセット
         console.log('Miss detected!')
         onJudgmentRef.current('miss') // 判定結果をコールバック
         missedAny = true
@@ -269,6 +280,8 @@ export default function useGameCore(songData, difficulty, onGameEnd, keyMaps) {
     score,
     counts,
     sound,
+    combo: comboRef.current,
+    maxCombo: maxComboRef.current,
 
     // メソッド
     startGame,
