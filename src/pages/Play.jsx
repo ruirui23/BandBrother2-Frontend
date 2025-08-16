@@ -149,13 +149,22 @@ export default function Play() {
 
   return (
     <div className="relative h-screen overflow-hidden bg-black">
-      {/* スコア表示 */}
-      <div className="absolute left-4 top-16 text-xl text-white">
-        Score: {score}
-        <br />
-        <span>最大コンボ: {maxCombo ?? 0}</span>
-        <br />
-        <span>合計コンボ: {(counts.perfect ?? 0) + (counts.good ?? 0)}</span>
+      {/* スコア表示（大きく・目立つUI） */}
+      <div className="absolute left-8 top-8 flex flex-col gap-2 z-20">
+        <div className="text-5xl font-extrabold text-yellow-300 drop-shadow-lg">
+          <span className="text-white text-3xl align-top">Score</span>
+          <span className="ml-4 text-yellow-400 text-6xl">{score}</span>
+        </div>
+        <div className="flex gap-8 mt-2">
+          <div className="text-2xl font-bold text-blue-300 bg-black/60 rounded px-4 py-2 border-2 border-blue-400 shadow">
+            最大コンボ<br />
+            <span className="text-4xl text-blue-200">{maxCombo ?? 0}</span>
+          </div>
+          <div className="text-2xl font-bold text-pink-300 bg-black/60 rounded px-4 py-2 border-2 border-pink-400 shadow">
+            合計コンボ<br />
+            <span className="text-4xl text-pink-200">{(counts.perfect ?? 0) + (counts.good ?? 0)}</span>
+          </div>
+        </div>
       </div>
       {/* 判定ライン・ノーツ描画 */}
       {isVertical ? (
