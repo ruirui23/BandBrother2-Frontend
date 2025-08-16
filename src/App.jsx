@@ -5,6 +5,7 @@ import {
   Navigate,
   useLocation,
 } from 'react-router-dom'
+import { WiiboardProvider } from "./context/WiiboardContext";
 import Home from './pages/Home.jsx'
 import TutorialMenu from './pages/TutorialMenu.jsx'
 import SelectDifficulty from './pages/SelectDifficulty.jsx'
@@ -22,6 +23,7 @@ import MultiPlay from './pages/MultiPlay.jsx'
 import MultiMusicSelect from './pages/MultiMusicSelect.jsx'
 import { auth } from './firebase'
 import { useEffect, useState } from 'react'
+import WiiboardMonitor from "./components/WiiboardMonitor";
 
 function RequireAuth({ children }) {
   const [user, setUser] = useState(auth.currentUser)
@@ -37,7 +39,9 @@ function RequireAuth({ children }) {
 
 export default function App() {
   return (
+    <WiiboardProvider>
     <BrowserRouter>
+      <WiiboardMonitor />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/tutorial" element={<TutorialMenu />} />
@@ -145,5 +149,6 @@ export default function App() {
         />
       </Routes>
     </BrowserRouter>
+    </WiiboardProvider>
   )
 }
