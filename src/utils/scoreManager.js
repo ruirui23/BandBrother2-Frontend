@@ -1,4 +1,4 @@
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, setDoc, getDoc, serverTimestamp, collection, query, orderBy, limit, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
 
 /**
@@ -76,4 +76,53 @@ export function calculateAccuracy(counts) {
   const total = counts.perfect + counts.good + counts.miss
   if (total === 0) return 0
   return Math.round(((counts.perfect + counts.good * 0.5) / total) * 1000) / 10
+}
+
+/**
+ * 楽曲の上位3名のスコアを取得する
+ * @param {string} chartId - 楽曲ID
+ * @returns {Promise<{success: boolean, rankings: Array, message: string}>}
+ */
+export async function getTopScoreForChart(chartId) {
+  try {
+    const rankingsRef = collection(db, 'charts', chartId, 'rankings')
+    const q = query(rankingsRef, orderBy('score', 'desc'), limit(3))
+    const querySnapshot = await getDocs(q)
+    
+    if (querySnapshot.empty) {
+      return {
+        success: true,
+        rankings: [],
+        message: 'まだスコアが記録されていません'
+      }
+    }
+    
+    const rankings = querySnapshot.docs.map((doc, index) => {
+      const data = doc.data()
+      return {
+        rank: index + 1,
+        userId: doc.id,
+        score: data.score,
+        userName: data.userName,
+        perfect: data.perfect,
+        good: data.good,
+        miss: data.miss,
+        accuracy: data.accuracy,
+        timestamp: data.timestamp
+      }
+    })
+    
+    return {
+      success: true,
+      rankings: rankings,
+      message: 'ランキング取得成功'
+    }
+  } catch (error) {
+    console.error('ランキング取得エラー:', error)
+    return {
+      success: false,
+      rankings: [],
+      message: 'ランキングの取得に失敗しました'
+    }
+  }
 }
