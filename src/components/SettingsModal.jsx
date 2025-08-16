@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { ALL_SE_FILES } from '../utils/soundEffects'
 import { useGameLayout } from '../store'
-import { useWiiboard } from "../context/WiiboardContext";
+import { useWiiboard } from '../context/WiiboardContext'
 
 const defaultKeys = {
   single: ['D', 'F', 'J', 'K'],
@@ -23,13 +23,12 @@ export default function SettingsModal({ onClose, onSave, initialKeys }) {
     }
   })
 
-  const { enabled, toggleEnabled } = useWiiboard();
+  const { enabled, toggleEnabled } = useWiiboard()
 
   const handleSEChange = e => {
     setSeFile(e.target.value)
     localStorage.setItem('seFileName', e.target.value)
   }
-
 
   const handleKeyDown = e => {
     if (editing.player && editing.lane !== null) {

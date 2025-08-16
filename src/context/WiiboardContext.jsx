@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState } from 'react'
 
-const WiiboardContext = createContext();
+const WiiboardContext = createContext()
 
 export function WiiboardProvider({ children }) {
   const [enabled, setEnabled] = useState(() => {
@@ -9,22 +9,22 @@ export function WiiboardProvider({ children }) {
     } catch {
       return false
     }
-  });
+  })
 
   const toggleEnabled = () => {
     setEnabled(prev => {
-      localStorage.setItem('wiiboardEnabled', (!prev).toString());
-      return !prev;
-    });
-  };
+      localStorage.setItem('wiiboardEnabled', (!prev).toString())
+      return !prev
+    })
+  }
 
   return (
     <WiiboardContext.Provider value={{ enabled, toggleEnabled }}>
       {children}
     </WiiboardContext.Provider>
-  );
+  )
 }
 
 export function useWiiboard() {
-  return useContext(WiiboardContext);
+  return useContext(WiiboardContext)
 }
