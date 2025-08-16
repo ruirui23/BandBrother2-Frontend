@@ -23,6 +23,15 @@ export default function SettingsModal({ onClose, onSave, initialKeys }) {
       return '/audio/po.mp3'
     }
   })
+  // ノーツスピード倍率
+  const speedOptions = [1.0, 1.5, 2.0, 4.0]
+  const [noteSpeed, setNoteSpeed] = useState(() => {
+    try {
+      return parseFloat(localStorage.getItem('noteSpeedMultiplier')) || 1.0
+    } catch {
+      return 1.0
+    }
+  })
 
   const { enabled, toggleEnabled } = useWiiboard()
 
@@ -38,6 +47,13 @@ export default function SettingsModal({ onClose, onSave, initialKeys }) {
   const handleSEChange = e => {
     setSeFile(e.target.value)
     localStorage.setItem('seFileName', e.target.value)
+  }
+
+  // ノーツスピード倍率変更
+  const handleSpeedChange = e => {
+    const val = parseFloat(e.target.value)
+    setNoteSpeed(val)
+    localStorage.setItem('noteSpeedMultiplier', val)
   }
 
   const handleKeyDown = e => {
@@ -69,7 +85,7 @@ export default function SettingsModal({ onClose, onSave, initialKeys }) {
           <span className="material-icons">close</span>
         </button>
         <h2 className="text-xl font-bold mb-4">⚙設定</h2>
-        <div className="flex items-center gap-4 mb-6">
+  <div className="flex items-center gap-4 mb-6">
           <div className="mb-4">
             <div className="font-semibold mb-2">効果音（SE）</div>
             <select
@@ -91,6 +107,19 @@ export default function SettingsModal({ onClose, onSave, initialKeys }) {
           >
             {isVertical ? '縦画面' : '横画面'}
           </button>
+        </div>
+        {/* ノーツスピード設定 */}
+        <div className="mb-6">
+          <div className="font-semibold mb-2">ノーツスピード</div>
+          <select
+            className="w-full px-3 py-2 border rounded"
+            value={noteSpeed}
+            onChange={handleSpeedChange}
+          >
+            {speedOptions.map(opt => (
+              <option key={opt} value={opt}>{opt}倍</option>
+            ))}
+          </select>
         </div>
         {/* WebSocket連携設定 */}
         <div className="flex items-center gap-4 mb-6">

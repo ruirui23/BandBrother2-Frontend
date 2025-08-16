@@ -46,6 +46,24 @@ const ALL_VALID_KEYS = [
 ]
 
 export default function TwoPlayerPlay() {
+  // ノーツスピード倍率をlocalStorageから取得
+  const getNoteSpeedMultiplier = () => {
+    try {
+      return parseFloat(localStorage.getItem('noteSpeedMultiplier')) || 1.0
+    } catch {
+      return 1.0
+    }
+  }
+  const [noteSpeedMultiplier, setNoteSpeedMultiplier] = useState(getNoteSpeedMultiplier())
+  useEffect(() => {
+    const onStorage = e => {
+      if (e.key === 'noteSpeedMultiplier') {
+        setNoteSpeedMultiplier(getNoteSpeedMultiplier())
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
   const { p1 = 'Easy' } = useParams() // URLパラメータから難易度を取得
   const nav = useNavigate()
   const offset = songData.offset ?? 0
@@ -217,7 +235,7 @@ export default function TwoPlayerPlay() {
       notes[player].forEach((n, index) => {
         if (n.lane !== targetLane || n.hit || n.missed) return
         const distance = Math.abs(
-          HIT_X - (HIT_X + (n.time - currentTime - offset) * NOTE_SPEED)
+          HIT_X - (HIT_X + (n.time - currentTime - offset) * NOTE_SPEED * noteSpeedMultiplier)
         )
         if (distance < JUDGE.good && distance < minDistance) {
           minDistance = distance
@@ -380,7 +398,7 @@ export default function TwoPlayerPlay() {
             <Note
               key={n.id}
               x={p1FieldCenterX - 96 + n.lane * 64}
-              y={screenHeight - 120 - (n.time - time - offset) * NOTE_SPEED}
+              y={screenHeight - 120 - (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier}
               lane={n.lane}
             />
           ))}
@@ -396,7 +414,7 @@ export default function TwoPlayerPlay() {
             <Note
               key={n.id}
               x={p2FieldCenterX - 96 + n.lane * 64}
-              y={screenHeight - 120 - (n.time - time - offset) * NOTE_SPEED}
+              y={screenHeight - 120 - (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier}
               lane={n.lane}
             />
           ))}
@@ -478,7 +496,7 @@ export default function TwoPlayerPlay() {
             return (
               <Note
                 key={n.id}
-                x={HIT_X + (n.time - time - offset) * NOTE_SPEED}
+                x={HIT_X + (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier}
                 y={yPos}
                 lane={n.lane}
               />
@@ -510,7 +528,7 @@ export default function TwoPlayerPlay() {
             return (
               <Note
                 key={n.id}
-                x={HIT_X + (n.time - time - offset) * NOTE_SPEED}
+                x={HIT_X + (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier}
                 y={yPos}
                 lane={n.lane}
               />

@@ -36,6 +36,24 @@ function getSingleKeyMaps() {
 const LANE_X_POSITIONS = [-96, -32, 32, 96]
 
 export default function Play() {
+  // ノーツスピード倍率をlocalStorageから取得
+  const getNoteSpeedMultiplier = () => {
+    try {
+      return parseFloat(localStorage.getItem('noteSpeedMultiplier')) || 1.0
+    } catch {
+      return 1.0
+    }
+  }
+  const [noteSpeedMultiplier, setNoteSpeedMultiplier] = useState(getNoteSpeedMultiplier())
+  useEffect(() => {
+    const onStorage = e => {
+      if (e.key === 'noteSpeedMultiplier') {
+        setNoteSpeedMultiplier(getNoteSpeedMultiplier())
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
   /* ---------- URL パラメータ ---------- */
   const { difficulty = 'Easy' } = useParams()
   const nav = useNavigate()
@@ -177,7 +195,7 @@ export default function Play() {
             <Note
               key={n.id}
               x={xPos}
-              y={HIT_Y - (n.time - time - offset) * NOTE_SPEED}
+              y={HIT_Y - (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier}
               lane={n.lane || 0}
             />
           )
@@ -187,7 +205,7 @@ export default function Play() {
           return (
             <Note
               key={n.id}
-              x={HIT_X + (n.time - time - offset) * NOTE_SPEED}
+              x={HIT_X + (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier}
               y={yPos}
               lane={n.lane || 0}
             />

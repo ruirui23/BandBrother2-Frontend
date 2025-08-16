@@ -34,6 +34,24 @@ function getKeyMaps() {
 import { useGameLayout } from '../store'
 
 export default function PlayCustom() {
+  // ノーツスピード倍率をlocalStorageから取得
+  const getNoteSpeedMultiplier = () => {
+    try {
+      return parseFloat(localStorage.getItem('noteSpeedMultiplier')) || 1.0
+    } catch {
+      return 1.0
+    }
+  }
+  const [noteSpeedMultiplier, setNoteSpeedMultiplier] = useState(getNoteSpeedMultiplier())
+  useEffect(() => {
+    const onStorage = e => {
+      if (e.key === 'noteSpeedMultiplier') {
+        setNoteSpeedMultiplier(getNoteSpeedMultiplier())
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
   const { chartId } = useParams()
   const nav = useNavigate()
   const { isVertical } = useGameLayout()
@@ -194,7 +212,7 @@ export default function PlayCustom() {
       notesRef.current.forEach((n, index) => {
         if (n.lane !== lane || n.hit || n.missed) return
         const distance = Math.abs(
-          HIT_X - (HIT_X + (n.time - currentTime - offset) * NOTE_SPEED)
+          HIT_X - (HIT_X + (n.time - currentTime - offset) * NOTE_SPEED * noteSpeedMultiplier)
         )
         if (distance < JUDGE.good && distance < minDistance) {
           minDistance = distance
@@ -315,7 +333,7 @@ export default function PlayCustom() {
           </div>
           {visibleNotes.map(n => {
             const xPos = screenWidth / 2 + LANE_Y_POSITIONS[n.lane || 0]
-            const y = screenHeight - 120 - (n.time - time - offset) * NOTE_SPEED
+            const y = screenHeight - 120 - (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier
             return <Note key={n.id} x={xPos} y={y} lane={n.lane} />
           })}
         </>
@@ -339,7 +357,7 @@ export default function PlayCustom() {
             return (
               <Note
                 key={n.id}
-                x={HIT_X + (n.time - time - offset) * NOTE_SPEED}
+                x={HIT_X + (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier}
                 y={yPos}
                 lane={n.lane}
               />

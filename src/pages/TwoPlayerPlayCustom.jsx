@@ -52,6 +52,25 @@ export default function TwoPlayerPlayCustom() {
   const { chartId } = useParams()
   const nav = useNavigate()
 
+  // ノーツスピード倍率をlocalStorageから取得し、状態管理
+  const getNoteSpeedMultiplier = () => {
+    try {
+      return parseFloat(localStorage.getItem('noteSpeedMultiplier')) || 1.0
+    } catch {
+      return 1.0
+    }
+  }
+  const [noteSpeedMultiplier, setNoteSpeedMultiplier] = useState(getNoteSpeedMultiplier())
+  useEffect(() => {
+    const onStorage = e => {
+      if (e.key === 'noteSpeedMultiplier') {
+        setNoteSpeedMultiplier(getNoteSpeedMultiplier())
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
+
   const [notes, setNotes] = useState({ p1: [], p2: [] })
   const [offset, setOffset] = useState(0)
 
@@ -281,7 +300,7 @@ export default function TwoPlayerPlayCustom() {
       currentNotes.forEach((n, index) => {
         if (n.lane !== targetLane || n.hit || n.missed) return
         const distance = Math.abs(
-          HIT_X - (HIT_X + (n.time - currentTime - offset) * NOTE_SPEED)
+          HIT_X - (HIT_X + (n.time - currentTime - offset) * NOTE_SPEED * noteSpeedMultiplier)
         )
         if (distance < JUDGE.good && distance < minDistance) {
           minDistance = distance
@@ -462,7 +481,7 @@ export default function TwoPlayerPlayCustom() {
             <Note
               key={n.id}
               x={p1FieldCenterX - 96 + n.lane * 64}
-              y={screenHeight - 120 - (n.time - time - offset) * NOTE_SPEED}
+              y={screenHeight - 120 - (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier}
               lane={n.lane}
             />
           ))}
@@ -478,7 +497,7 @@ export default function TwoPlayerPlayCustom() {
             <Note
               key={n.id}
               x={p2FieldCenterX - 96 + n.lane * 64}
-              y={screenHeight - 120 - (n.time - time - offset) * NOTE_SPEED}
+              y={screenHeight - 120 - (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier}
               lane={n.lane}
             />
           ))}
@@ -560,7 +579,7 @@ export default function TwoPlayerPlayCustom() {
             return (
               <Note
                 key={n.id}
-                x={HIT_X + (n.time - time - offset) * NOTE_SPEED}
+                x={HIT_X + (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier}
                 y={yPos}
                 lane={n.lane}
               />
@@ -596,7 +615,7 @@ export default function TwoPlayerPlayCustom() {
             return (
               <Note
                 key={n.id}
-                x={HIT_X + (n.time - time - offset) * NOTE_SPEED}
+                x={HIT_X + (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier}
                 y={yPos}
                 lane={n.lane}
               />
