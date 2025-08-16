@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { ALL_SE_FILES } from '../utils/soundEffects'
 import { useGameLayout } from '../store'
+import { useWiiboard } from '../context/WiiboardContext'
 
 const defaultKeys = {
   single: ['D', 'F', 'J', 'K'],
@@ -21,6 +22,8 @@ export default function SettingsModal({ onClose, onSave, initialKeys }) {
       return '/audio/po.mp3'
     }
   })
+
+  const { enabled, toggleEnabled } = useWiiboard()
 
   const handleSEChange = e => {
     setSeFile(e.target.value)
@@ -77,6 +80,16 @@ export default function SettingsModal({ onClose, onSave, initialKeys }) {
             onClick={toggleDirection}
           >
             {isVertical ? '縦画面' : '横画面'}
+          </button>
+        </div>
+        {/* WebSocket連携設定 */}
+        <div className="flex items-center gap-4 mb-6">
+          <span className="font-bold">WiiBoard WebSocket連携</span>
+          <button
+            className={`px-4 py-2 rounded-full border-2 flex items-center gap-2 transition-all duration-200 shadow ${enabled ? 'bg-green-500 text-white border-green-700 scale-110' : 'bg-gray-200 text-gray-700 border-gray-400'}`}
+            onClick={toggleEnabled}
+          >
+            {enabled ? 'ON' : 'OFF'}
           </button>
         </div>
         <div className="mb-4">
