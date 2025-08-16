@@ -85,7 +85,7 @@ export default function SettingsModal({ onClose, onSave, initialKeys }) {
           <span className="material-icons">close</span>
         </button>
         <h2 className="text-xl font-bold mb-4">⚙設定</h2>
-  <div className="flex items-center gap-4 mb-6">
+        <div className="flex items-center gap-4 mb-6">
           <div className="mb-4">
             <div className="font-semibold mb-2">効果音（SE）</div>
             <select
@@ -117,7 +117,9 @@ export default function SettingsModal({ onClose, onSave, initialKeys }) {
             onChange={handleSpeedChange}
           >
             {speedOptions.map(opt => (
-              <option key={opt} value={opt}>{opt}倍</option>
+              <option key={opt} value={opt}>
+                {opt}倍
+              </option>
             ))}
           </select>
         </div>

@@ -44,7 +44,9 @@ export default function Play() {
       return 1.0
     }
   }
-  const [noteSpeedMultiplier, setNoteSpeedMultiplier] = useState(getNoteSpeedMultiplier())
+  const [noteSpeedMultiplier, setNoteSpeedMultiplier] = useState(
+    getNoteSpeedMultiplier()
+  )
   useEffect(() => {
     const onStorage = e => {
       if (e.key === 'noteSpeedMultiplier') {
@@ -157,12 +159,16 @@ export default function Play() {
         </div>
         <div className="flex gap-8 mt-2">
           <div className="text-2xl font-bold text-blue-300 bg-black/60 rounded px-4 py-2 border-2 border-blue-400 shadow">
-            最大コンボ<br />
+            最大コンボ
+            <br />
             <span className="text-4xl text-blue-200">{maxCombo ?? 0}</span>
           </div>
           <div className="text-2xl font-bold text-pink-300 bg-black/60 rounded px-4 py-2 border-2 border-pink-400 shadow">
-            合計コンボ<br />
-            <span className="text-4xl text-pink-200">{(counts.perfect ?? 0) + (counts.good ?? 0)}</span>
+            合計コンボ
+            <br />
+            <span className="text-4xl text-pink-200">
+              {(counts.perfect ?? 0) + (counts.good ?? 0)}
+            </span>
           </div>
         </div>
       </div>
@@ -204,7 +210,10 @@ export default function Play() {
             <Note
               key={n.id}
               x={xPos}
-              y={HIT_Y - (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier}
+              y={
+                HIT_Y -
+                (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier
+              }
               lane={n.lane || 0}
             />
           )
@@ -214,7 +223,10 @@ export default function Play() {
           return (
             <Note
               key={n.id}
-              x={HIT_X + (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier}
+              x={
+                HIT_X +
+                (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier
+              }
               y={yPos}
               lane={n.lane || 0}
             />

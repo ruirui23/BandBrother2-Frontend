@@ -42,7 +42,9 @@ export default function PlayCustom() {
       return 1.0
     }
   }
-  const [noteSpeedMultiplier, setNoteSpeedMultiplier] = useState(getNoteSpeedMultiplier())
+  const [noteSpeedMultiplier, setNoteSpeedMultiplier] = useState(
+    getNoteSpeedMultiplier()
+  )
   useEffect(() => {
     const onStorage = e => {
       if (e.key === 'noteSpeedMultiplier') {
@@ -212,7 +214,11 @@ export default function PlayCustom() {
       notesRef.current.forEach((n, index) => {
         if (n.lane !== lane || n.hit || n.missed) return
         const distance = Math.abs(
-          HIT_X - (HIT_X + (n.time - currentTime - offset) * NOTE_SPEED * noteSpeedMultiplier)
+          HIT_X -
+            (HIT_X +
+              (n.time - currentTime - offset) *
+                NOTE_SPEED *
+                noteSpeedMultiplier)
         )
         if (distance < JUDGE.good && distance < minDistance) {
           minDistance = distance
@@ -310,22 +316,28 @@ export default function PlayCustom() {
   return (
     <div className="relative h-screen overflow-hidden bg-black">
       {/* スコア表示 */}
-         <div className="absolute left-8 top-8 flex flex-col gap-2 z-20">
-           <div className="text-5xl font-extrabold text-yellow-300 drop-shadow-lg">
-             <span className="text-white text-3xl align-top">Score</span>
-             <span className="ml-4 text-yellow-400 text-6xl">{score}</span>
-           </div>
-           <div className="flex gap-8 mt-2">
-             <div className="text-2xl font-bold text-blue-300 bg-black/60 rounded px-4 py-2 border-2 border-blue-400 shadow">
-               最大コンボ<br />
-               <span className="text-4xl text-blue-200">{maxComboRef.current}</span>
-             </div>
-             <div className="text-2xl font-bold text-pink-300 bg-black/60 rounded px-4 py-2 border-2 border-pink-400 shadow">
-               合計コンボ<br />
-               <span className="text-4xl text-pink-200">{(countsRef.current.perfect ?? 0) + (countsRef.current.good ?? 0)}</span>
-             </div>
-           </div>
-         </div>
+      <div className="absolute left-8 top-8 flex flex-col gap-2 z-20">
+        <div className="text-5xl font-extrabold text-yellow-300 drop-shadow-lg">
+          <span className="text-white text-3xl align-top">Score</span>
+          <span className="ml-4 text-yellow-400 text-6xl">{score}</span>
+        </div>
+        <div className="flex gap-8 mt-2">
+          <div className="text-2xl font-bold text-blue-300 bg-black/60 rounded px-4 py-2 border-2 border-blue-400 shadow">
+            最大コンボ
+            <br />
+            <span className="text-4xl text-blue-200">
+              {maxComboRef.current}
+            </span>
+          </div>
+          <div className="text-2xl font-bold text-pink-300 bg-black/60 rounded px-4 py-2 border-2 border-pink-400 shadow">
+            合計コンボ
+            <br />
+            <span className="text-4xl text-pink-200">
+              {(countsRef.current.perfect ?? 0) + (countsRef.current.good ?? 0)}
+            </span>
+          </div>
+        </div>
+      </div>
       {/* 判定ライン・ノーツ描画 */}
       {isVertical ? (
         <>
@@ -341,7 +353,10 @@ export default function PlayCustom() {
           </div>
           {visibleNotes.map(n => {
             const xPos = screenWidth / 2 + LANE_Y_POSITIONS[n.lane || 0]
-            const y = screenHeight - 120 - (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier
+            const y =
+              screenHeight -
+              120 -
+              (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier
             return <Note key={n.id} x={xPos} y={y} lane={n.lane} />
           })}
         </>
@@ -365,7 +380,10 @@ export default function PlayCustom() {
             return (
               <Note
                 key={n.id}
-                x={HIT_X + (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier}
+                x={
+                  HIT_X +
+                  (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier
+                }
                 y={yPos}
                 lane={n.lane}
               />

@@ -60,7 +60,9 @@ export default function TwoPlayerPlayCustom() {
       return 1.0
     }
   }
-  const [noteSpeedMultiplier, setNoteSpeedMultiplier] = useState(getNoteSpeedMultiplier())
+  const [noteSpeedMultiplier, setNoteSpeedMultiplier] = useState(
+    getNoteSpeedMultiplier()
+  )
   useEffect(() => {
     const onStorage = e => {
       if (e.key === 'noteSpeedMultiplier') {
@@ -300,7 +302,11 @@ export default function TwoPlayerPlayCustom() {
       currentNotes.forEach((n, index) => {
         if (n.lane !== targetLane || n.hit || n.missed) return
         const distance = Math.abs(
-          HIT_X - (HIT_X + (n.time - currentTime - offset) * NOTE_SPEED * noteSpeedMultiplier)
+          HIT_X -
+            (HIT_X +
+              (n.time - currentTime - offset) *
+                NOTE_SPEED *
+                noteSpeedMultiplier)
         )
         if (distance < JUDGE.good && distance < minDistance) {
           minDistance = distance
@@ -446,16 +452,25 @@ export default function TwoPlayerPlayCustom() {
         <div className="absolute left-2 top-2 flex flex-col gap-1 z-20 items-start">
           <div className="text-base font-extrabold text-yellow-300 drop-shadow-lg">
             <span className="text-white text-xs align-top">Score</span>
-            <span className="ml-1 text-yellow-400 text-lg">{p1ScoreRef.current.score}</span>
+            <span className="ml-1 text-yellow-400 text-lg">
+              {p1ScoreRef.current.score}
+            </span>
           </div>
           <div className="flex gap-1 mt-1">
             <div className="text-xs font-bold text-blue-300 bg-black/60 rounded px-1.5 py-0.5 border border-blue-400 shadow">
-              最大コンボ<br />
-              <span className="text-base text-blue-200">{p1MaxComboRef.current}</span>
+              最大コンボ
+              <br />
+              <span className="text-base text-blue-200">
+                {p1MaxComboRef.current}
+              </span>
             </div>
             <div className="text-xs font-bold text-pink-300 bg-black/60 rounded px-1.5 py-0.5 border border-pink-400 shadow">
-              合計コンボ<br />
-              <span className="text-base text-pink-200">{(p1ScoreRef.current.perfect ?? 0) + (p1ScoreRef.current.good ?? 0)}</span>
+              合計コンボ
+              <br />
+              <span className="text-base text-pink-200">
+                {(p1ScoreRef.current.perfect ?? 0) +
+                  (p1ScoreRef.current.good ?? 0)}
+              </span>
             </div>
           </div>
         </div>
@@ -463,16 +478,25 @@ export default function TwoPlayerPlayCustom() {
         <div className="absolute right-2 top-2 flex flex-col gap-1 z-20 items-end">
           <div className="text-base font-extrabold text-yellow-300 drop-shadow-lg">
             <span className="text-white text-xs align-top">Score</span>
-            <span className="ml-1 text-yellow-400 text-lg">{p2ScoreRef.current.score}</span>
+            <span className="ml-1 text-yellow-400 text-lg">
+              {p2ScoreRef.current.score}
+            </span>
           </div>
           <div className="flex gap-1 mt-1">
             <div className="text-xs font-bold text-blue-300 bg-black/60 rounded px-1.5 py-0.5 border border-blue-400 shadow">
-              最大コンボ<br />
-              <span className="text-base text-blue-200">{p2MaxComboRef.current}</span>
+              最大コンボ
+              <br />
+              <span className="text-base text-blue-200">
+                {p2MaxComboRef.current}
+              </span>
             </div>
             <div className="text-xs font-bold text-pink-300 bg-black/60 rounded px-1.5 py-0.5 border border-pink-400 shadow">
-              合計コンボ<br />
-              <span className="text-base text-pink-200">{(p2ScoreRef.current.perfect ?? 0) + (p2ScoreRef.current.good ?? 0)}</span>
+              合計コンボ
+              <br />
+              <span className="text-base text-pink-200">
+                {(p2ScoreRef.current.perfect ?? 0) +
+                  (p2ScoreRef.current.good ?? 0)}
+              </span>
             </div>
           </div>
         </div>
@@ -514,7 +538,11 @@ export default function TwoPlayerPlayCustom() {
             <Note
               key={n.id}
               x={p1FieldCenterX - 96 + n.lane * 64}
-              y={screenHeight - 120 - (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier}
+              y={
+                screenHeight -
+                120 -
+                (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier
+              }
               lane={n.lane}
             />
           ))}
@@ -530,7 +558,11 @@ export default function TwoPlayerPlayCustom() {
             <Note
               key={n.id}
               x={p2FieldCenterX - 96 + n.lane * 64}
-              y={screenHeight - 120 - (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier}
+              y={
+                screenHeight -
+                120 -
+                (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier
+              }
               lane={n.lane}
             />
           ))}
@@ -592,7 +624,10 @@ export default function TwoPlayerPlayCustom() {
             return (
               <Note
                 key={n.id}
-                x={HIT_X + (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier}
+                x={
+                  HIT_X +
+                  (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier
+                }
                 y={yPos}
                 lane={n.lane}
               />
@@ -602,16 +637,25 @@ export default function TwoPlayerPlayCustom() {
         <div className="absolute left-4 top-2 flex flex-row items-center gap-2 z-20">
           <div className="text-base font-extrabold text-yellow-300 drop-shadow-lg">
             <span className="text-white text-xs align-top">Score</span>
-            <span className="ml-1 text-yellow-400 text-lg">{p1ScoreRef.current.score}</span>
+            <span className="ml-1 text-yellow-400 text-lg">
+              {p1ScoreRef.current.score}
+            </span>
           </div>
           <div className="flex gap-1 ml-2">
             <div className="text-xs font-bold text-blue-300 bg-black/60 rounded px-1.5 py-0.5 border border-blue-400 shadow">
-              最大コンボ<br />
-              <span className="text-base text-blue-200">{p1MaxComboRef.current}</span>
+              最大コンボ
+              <br />
+              <span className="text-base text-blue-200">
+                {p1MaxComboRef.current}
+              </span>
             </div>
             <div className="text-xs font-bold text-pink-300 bg-black/60 rounded px-1.5 py-0.5 border border-pink-400 shadow">
-              合計コンボ<br />
-              <span className="text-base text-pink-200">{(p1ScoreRef.current.perfect ?? 0) + (p1ScoreRef.current.good ?? 0)}</span>
+              合計コンボ
+              <br />
+              <span className="text-base text-pink-200">
+                {(p1ScoreRef.current.perfect ?? 0) +
+                  (p1ScoreRef.current.good ?? 0)}
+              </span>
             </div>
           </div>
         </div>
@@ -645,7 +689,10 @@ export default function TwoPlayerPlayCustom() {
             return (
               <Note
                 key={n.id}
-                x={HIT_X + (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier}
+                x={
+                  HIT_X +
+                  (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier
+                }
                 y={yPos}
                 lane={n.lane}
               />
@@ -655,20 +702,29 @@ export default function TwoPlayerPlayCustom() {
         <div className="absolute left-4 top-2 flex flex-row items-center gap-2 z-20">
           <div className="text-base font-extrabold text-yellow-300 drop-shadow-lg">
             <span className="text-white text-xs align-top">Score</span>
-            <span className="ml-1 text-yellow-400 text-lg">{p2ScoreRef.current.score}</span>
+            <span className="ml-1 text-yellow-400 text-lg">
+              {p2ScoreRef.current.score}
+            </span>
           </div>
           <div className="flex gap-1 ml-2">
             <div className="text-xs font-bold text-blue-300 bg-black/60 rounded px-1.5 py-0.5 border border-blue-400 shadow">
-              最大コンボ<br />
-              <span className="text-base text-blue-200">{p2MaxComboRef.current}</span>
+              最大コンボ
+              <br />
+              <span className="text-base text-blue-200">
+                {p2MaxComboRef.current}
+              </span>
             </div>
             <div className="text-xs font-bold text-pink-300 bg-black/60 rounded px-1.5 py-0.5 border border-pink-400 shadow">
-              合計コンボ<br />
-              <span className="text-base text-pink-200">{(p2ScoreRef.current.perfect ?? 0) + (p2ScoreRef.current.good ?? 0)}</span>
+              合計コンボ
+              <br />
+              <span className="text-base text-pink-200">
+                {(p2ScoreRef.current.perfect ?? 0) +
+                  (p2ScoreRef.current.good ?? 0)}
+              </span>
             </div>
           </div>
         </div>
       </div>
     </div>
-  );
+  )
 }
