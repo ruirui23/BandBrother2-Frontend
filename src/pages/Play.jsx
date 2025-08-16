@@ -87,14 +87,24 @@ export default function Play() {
         startGame()
       }
       
-      // Kキーとして処理（KeyKをシミュレート）
-      const simulatedEvent = {
-        code: 'KeyK',
-        key: 'K',
-        preventDefault: () => {},
-        stopPropagation: () => {}
+      // 現在のキー設定から4番目のレーン（インデックス3）のキーを取得
+      const currentKeyMaps = getSingleKeyMaps()
+      const fourthLaneKeys = Object.keys(currentKeyMaps.KEY_TO_LANE).filter(
+        keyCode => currentKeyMaps.KEY_TO_LANE[keyCode] === 3
+      )
+      
+      if (fourthLaneKeys.length > 0) {
+        const keyCode = fourthLaneKeys[0] // 4番目のレーンのキーコード
+        const keyChar = keyCode.replace('Key', '') // 'KeyK' -> 'K'
+        
+        const simulatedEvent = {
+          code: keyCode,
+          key: keyChar,
+          preventDefault: () => {},
+          stopPropagation: () => {}
+        }
+        handleKeyPress(simulatedEvent)
       }
-      handleKeyPress(simulatedEvent)
     })
   }, [setOnButtonPress, started, sound, startGame, handleKeyPress])
 
