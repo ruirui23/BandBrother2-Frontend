@@ -1,15 +1,80 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
+import { useAuthState } from 'react-firebase-hooks/auth'
+import { auth } from '../firebase'
+import {
+  saveCustomChartScore,
+  calculateAccuracy,
+  getTopScoreForChart,
+} from '../utils/scoreManager'
 
 export default function Result() {
   const { state } = useLocation()
   const [showResult, setShowResult] = useState(false)
+  const [user] = useAuthState(auth)
+  const [saveStatus, setSaveStatus] = useState(null) // null | 'saving' | 'success' | 'error'
+  const [saveMessage, setSaveMessage] = useState('')
+  const [rankings, setRankings] = useState([])
+  const [rankingsLoading, setRankingsLoading] = useState(false)
 
   useEffect(() => {
     // 少し遅延させてから結果を表示
     const timer = setTimeout(() => setShowResult(true), 500)
     return () => clearTimeout(timer)
   }, [])
+
+  // カスタム楽曲のスコア保存
+  useEffect(() => {
+    const saveScore = async () => {
+      // カスタム楽曲かつ認証済みユーザーの場合のみ保存
+      if (!state?.chartId || !user || !state?.counts) return
+
+      setSaveStatus('saving')
+
+      const accuracy = calculateAccuracy(state.counts)
+      const scoreData = {
+        score: state.score || 0,
+        perfect: state.counts.perfect || 0,
+        good: state.counts.good || 0,
+        miss: state.counts.miss || 0,
+        accuracy,
+      }
+
+      const result = await saveCustomChartScore(
+        state.chartId,
+        user.uid,
+        user.displayName || user.email || 'Anonymous',
+        scoreData
+      )
+
+      if (result.success) {
+        setSaveStatus('success')
+        setSaveMessage(result.message)
+      } else {
+        setSaveStatus('error')
+        setSaveMessage(result.message)
+      }
+    }
+
+    saveScore()
+  }, [state, user])
+
+  // カスタム楽曲のランキング取得
+  useEffect(() => {
+    const fetchRankings = async () => {
+      if (!state?.chartId) return
+
+      setRankingsLoading(true)
+      const result = await getTopScoreForChart(state.chartId)
+
+      if (result.success) {
+        setRankings(result.rankings)
+      }
+      setRankingsLoading(false)
+    }
+
+    fetchRankings()
+  }, [state?.chartId])
 
   // マルチプレイ用の結果表示
   if (state && state.isMultiPlayer) {
@@ -295,6 +360,111 @@ export default function Result() {
           <div className="text-xl font-bold text-purple-400">{accuracy}%</div>
           <div className="text-sm text-gray-400">Accuracy</div>
         </div>
+
+        {/* スコア保存状況（カスタム楽曲の場合のみ） */}
+        {state?.chartId && (
+          <div className="text-center mb-6">
+            {saveStatus === 'saving' && (
+              <div className="text-yellow-400 text-sm">スコアを保存中...</div>
+            )}
+            {saveStatus === 'success' && (
+              <div className="text-green-400 text-sm">✅ {saveMessage}</div>
+            )}
+            {saveStatus === 'error' && (
+              <div className="text-red-400 text-sm">❌ {saveMessage}</div>
+            )}
+            {!user && (
+              <div className="text-gray-400 text-sm">
+                ログインするとスコアが保存されます
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ランキング情報（カスタム楽曲の場合のみ） */}
+        {state?.chartId && (
+          <div className="mb-6 p-4 bg-white/5 rounded-lg border border-white/10">
+            <h3 className="text-lg font-bold text-center text-white mb-4">
+              🏆 ランキング TOP3
+            </h3>
+
+            {rankingsLoading && (
+              <div className="text-center text-gray-400 text-sm">
+                ランキングを取得中...
+              </div>
+            )}
+
+            {!rankingsLoading && rankings.length > 0 && (
+              <div className="space-y-3">
+                {rankings.map(ranking => {
+                  const getRankEmoji = rank => {
+                    switch (rank) {
+                      case 1:
+                        return '🥇'
+                      case 2:
+                        return '🥈'
+                      case 3:
+                        return '🥉'
+                      default:
+                        return '🏅'
+                    }
+                  }
+
+                  const getRankColor = rank => {
+                    switch (rank) {
+                      case 1:
+                        return 'text-yellow-400'
+                      case 2:
+                        return 'text-gray-300'
+                      case 3:
+                        return 'text-amber-600'
+                      default:
+                        return 'text-gray-400'
+                    }
+                  }
+
+                  return (
+                    <div
+                      key={ranking.userId}
+                      className="flex items-center justify-between p-3 bg-white/5 rounded-lg"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-xl">
+                          {getRankEmoji(ranking.rank)}
+                        </span>
+                        <div>
+                          <div className="font-semibold text-white">
+                            {ranking.userName}
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            Perfect: {ranking.perfect} | Good: {ranking.good} |
+                            Miss: {ranking.miss}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div
+                          className={`text-xl font-bold ${getRankColor(ranking.rank)}`}
+                        >
+                          {ranking.score.toLocaleString()}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          精度: {ranking.accuracy}%
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {!rankingsLoading && rankings.length === 0 && (
+              <div className="text-center text-gray-400 text-sm">
+                まだ記録がありません
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ホームに戻るボタン */}
         <Link
