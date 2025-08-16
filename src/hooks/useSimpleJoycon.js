@@ -8,7 +8,7 @@ export default function useSimpleJoycon() {
   const onButtonPressRef = useRef(null)
 
   // ボタン押下コールバックを設定
-  const setOnButtonPress = useCallback((callback) => {
+  const setOnButtonPress = useCallback(callback => {
     onButtonPressRef.current = callback
   }, [])
 
@@ -22,10 +22,10 @@ export default function useSimpleJoycon() {
     try {
       // joy-con-webhidライブラリを動的インポート
       const JoyCon = await import('joy-con-webhid')
-      
+
       // ジョイコンに接続
       await JoyCon.connectJoyCon()
-      
+
       // 接続されたジョイコンを取得
       const connectedJoyCons = Array.from(JoyCon.connectedJoyCons.values())
       if (connectedJoyCons.length === 0) {
@@ -39,32 +39,34 @@ export default function useSimpleJoycon() {
       if (typeof joyCon.open === 'function') {
         await joyCon.open()
       }
-      
+
       if (typeof joyCon.enableStandardFullMode === 'function') {
         await joyCon.enableStandardFullMode()
       }
-      
+
       // 入力イベントリスナーを設定
       if (typeof joyCon.addEventListener === 'function') {
         joyCon.addEventListener('hidinput', ({ detail }) => {
           // Aボタン（右ジョイコンの下ボタン）が押されたかチェック
           if (detail.buttonStatus && detail.buttonStatus.a) {
             // グローバルキーイベントとしてAボタン押下をシミュレート
-            const keySettings = JSON.parse(localStorage.getItem('keySettings') || '{}')
+            const keySettings = JSON.parse(
+              localStorage.getItem('keySettings') || '{}'
+            )
             const singleKeys = keySettings.single || ['D', 'F', 'J', 'K']
             const fourthLaneKey = singleKeys[3] || 'K'
-            
+
             // カスタムキーボードイベントを作成
             const keyboardEvent = new KeyboardEvent('keydown', {
               key: fourthLaneKey,
               code: `Key${fourthLaneKey.toUpperCase()}`,
               bubbles: true,
-              cancelable: true
+              cancelable: true,
             })
-            
+
             // グローバルにキーイベントを発生
             window.dispatchEvent(keyboardEvent)
-            
+
             // 従来のコールバック方式も維持（互換性のため）
             if (onButtonPressRef.current) {
               onButtonPressRef.current(fourthLaneKey)
@@ -74,8 +76,10 @@ export default function useSimpleJoycon() {
       }
 
       setIsConnected(true)
-      console.log('ジョイコンが正常に接続されました:', joyCon.device?.productName || 'Unknown')
-      
+      console.log(
+        'ジョイコンが正常に接続されました:',
+        joyCon.device?.productName || 'Unknown'
+      )
     } catch (err) {
       console.error('ジョイコン接続エラー:', err)
       setError(err.message || 'ジョイコンの接続に失敗しました')
@@ -126,6 +130,6 @@ export default function useSimpleJoycon() {
     error,
     connect,
     disconnect,
-    setOnButtonPress
+    setOnButtonPress,
   }
 }

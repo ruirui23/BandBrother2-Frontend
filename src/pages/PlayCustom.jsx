@@ -40,7 +40,7 @@ export default function PlayCustom() {
   const notesRef = useRef([])
   const [started, setStarted] = useState(false)
   const [time, setTime] = useState(0)
-  
+
   // ゲームループで時間を進める
   useGameLoop(() => {
     if (!started || !soundRef.current) return
@@ -214,7 +214,6 @@ export default function PlayCustom() {
     },
     [started, offset]
   )
-
 
   useEffect(() => {
     if (loading) return

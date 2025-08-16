@@ -61,9 +61,7 @@ export default function Play() {
     setOnJudgment,
     KEY_TO_LANE,
     VALID_KEYS,
-    handleKeyPress,
   } = useGameCore(song, difficulty, handleGameEnd, keyMaps)
-
 
   /* ---------- 判定表示 ---------- */
   const [judgement, setJudgement] = useState('') // 判定表示用の状態
@@ -75,7 +73,6 @@ export default function Play() {
   useEffect(() => {
     scoreRef.current = { counts, score }
   }, [counts, score])
-
 
   // 最初のキー入力でゲーム開始
   useEffect(() => {

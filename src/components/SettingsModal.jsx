@@ -25,9 +25,15 @@ export default function SettingsModal({ onClose, onSave, initialKeys }) {
   })
 
   const { enabled, toggleEnabled } = useWiiboard()
-  
+
   // ジョイコン機能
-  const { isConnected, isConnecting, error: joyconError, connect, disconnect } = useSimpleJoycon()
+  const {
+    isConnected,
+    isConnecting,
+    error: joyconError,
+    connect,
+    disconnect,
+  } = useSimpleJoycon()
 
   const handleSEChange = e => {
     setSeFile(e.target.value)
@@ -96,7 +102,7 @@ export default function SettingsModal({ onClose, onSave, initialKeys }) {
             {enabled ? 'ON' : 'OFF'}
           </button>
         </div>
-        
+
         {/* Joy-Con設定 */}
         <div className="mb-6">
           <div className="font-bold mb-2">🎮 Joy-Con接続</div>
@@ -104,8 +110,8 @@ export default function SettingsModal({ onClose, onSave, initialKeys }) {
             {!isConnected ? (
               <button
                 className={`px-4 py-2 text-white rounded ${
-                  isConnecting 
-                    ? 'bg-yellow-600 cursor-not-allowed' 
+                  isConnecting
+                    ? 'bg-yellow-600 cursor-not-allowed'
                     : 'bg-blue-600 hover:bg-blue-700'
                 }`}
                 onClick={connect}
@@ -115,7 +121,9 @@ export default function SettingsModal({ onClose, onSave, initialKeys }) {
               </button>
             ) : (
               <div className="flex items-center gap-2">
-                <span className="text-green-600 font-semibold">🎮 接続済み</span>
+                <span className="text-green-600 font-semibold">
+                  🎮 接続済み
+                </span>
                 <button
                   className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm"
                   onClick={disconnect}
@@ -126,9 +134,7 @@ export default function SettingsModal({ onClose, onSave, initialKeys }) {
             )}
           </div>
           {joyconError && (
-            <div className="text-red-600 text-sm mt-2">
-              {joyconError}
-            </div>
+            <div className="text-red-600 text-sm mt-2">{joyconError}</div>
           )}
           <div className="text-gray-600 text-sm mt-2">
             Aボタンで4番目のレーン（{keys.single[3]}キー）を操作できます
