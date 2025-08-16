@@ -133,8 +133,10 @@ export default function Play() {
     <div className="relative h-screen overflow-hidden bg-black">
       {/* スコア表示 */}
       <div className="absolute left-4 top-16 text-xl text-white">
-        Score: {score}<br />
-        <span>最大コンボ: {maxCombo ?? 0}</span><br />
+        Score: {score}
+        <br />
+        <span>最大コンボ: {maxCombo ?? 0}</span>
+        <br />
         <span>合計コンボ: {(counts.perfect ?? 0) + (counts.good ?? 0)}</span>
       </div>
       {/* 判定ライン・ノーツ描画 */}

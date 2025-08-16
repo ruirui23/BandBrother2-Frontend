@@ -170,7 +170,16 @@ export default function Result() {
 
   // 二人プレイ用（ローカル）
   if (state && state.counts1 && state.counts2) {
-    const { counts1, counts2, score1, score2, lastCombo1, lastCombo2, maxCombo1, maxCombo2 } = state
+    const {
+      counts1,
+      counts2,
+      score1,
+      score2,
+      lastCombo1,
+      lastCombo2,
+      maxCombo1,
+      maxCombo2,
+    } = state
     const c1 = counts1
     const c2 = counts2
     const s1 = score1 ?? 0
@@ -264,8 +273,12 @@ export default function Result() {
               <div className="flex flex-col items-center gap-2">
                 {/* <div className="text-2xl font-bold text-yellow-400">{s1}</div> */}
                 {/* <div className="text-sm text-gray-400">Score</div> */}
-                <div className="text-lg text-purple-400">最大コンボ: {max1}</div>
-                <div className="text-lg text-purple-400">合計コンボ: {combo1}</div>
+                <div className="text-lg text-purple-400">
+                  最大コンボ: {max1}
+                </div>
+                <div className="text-lg text-purple-400">
+                  合計コンボ: {combo1}
+                </div>
               </div>
             </div>
 
@@ -311,8 +324,12 @@ export default function Result() {
               <div className="flex flex-col items-center gap-2">
                 {/* <div className="text-2xl font-bold text-yellow-400">{s2}</div> */}
                 {/* <div className="text-sm text-gray-400">Score</div> */}
-                <div className="text-lg text-purple-400">最大コンボ: {max2}</div>
-                <div className="text-lg text-purple-400">合計コンボ: {combo2}</div>
+                <div className="text-lg text-purple-400">
+                  最大コンボ: {max2}
+                </div>
+                <div className="text-lg text-purple-400">
+                  合計コンボ: {combo2}
+                </div>
               </div>
             </div>
           </div>
@@ -337,7 +354,7 @@ export default function Result() {
     const total = perfect + good + miss
     const accuracy =
       total > 0 ? Math.round(((perfect + good * 0.5) / total) * 100) : 0
-    const combo = lastCombo ?? (perfect + good)
+    const combo = lastCombo ?? perfect + good
     const max = maxCombo ?? 0
 
     return (
@@ -356,7 +373,9 @@ export default function Result() {
               {score.toLocaleString()}
             </div>
             <div className="text-lg text-gray-300">TOTAL SCORE</div>
-            <div className="text-lg text-purple-400 mt-2">最大コンボ: {max}</div>
+            <div className="text-lg text-purple-400 mt-2">
+              最大コンボ: {max}
+            </div>
             <div className="text-lg text-purple-400">合計コンボ: {combo}</div>
           </div>
 
@@ -458,8 +477,8 @@ export default function Result() {
                               {ranking.userName}
                             </div>
                             <div className="text-xs text-gray-400">
-                              Perfect: {ranking.perfect} | Good: {ranking.good} |
-                              Miss: {ranking.miss}
+                              Perfect: {ranking.perfect} | Good: {ranking.good}{' '}
+                              | Miss: {ranking.miss}
                             </div>
                           </div>
                         </div>

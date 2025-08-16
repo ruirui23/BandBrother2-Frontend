@@ -59,7 +59,8 @@ export default function PlayCustom() {
           score: scoreRef.current,
           counts: countsRef.current,
           maxCombo: maxComboRef.current,
-          lastCombo: (countsRef.current.perfect ?? 0) + (countsRef.current.good ?? 0),
+          lastCombo:
+            (countsRef.current.perfect ?? 0) + (countsRef.current.good ?? 0),
           chartId,
           chartTitle: chartDataRef.current?.title || '無題',
         },
@@ -153,7 +154,9 @@ export default function PlayCustom() {
                     score: scoreRef.current,
                     counts: countsRef.current,
                     maxCombo: maxComboRef.current,
-                    lastCombo: (countsRef.current.perfect ?? 0) + (countsRef.current.good ?? 0),
+                    lastCombo:
+                      (countsRef.current.perfect ?? 0) +
+                      (countsRef.current.good ?? 0),
                     chartId,
                     chartTitle: chartDataRef.current?.title || '無題',
                   },
@@ -208,7 +211,8 @@ export default function PlayCustom() {
         })
         countsRef.current.perfect += 1
         comboRef.current++
-        if (comboRef.current > maxComboRef.current) maxComboRef.current = comboRef.current
+        if (comboRef.current > maxComboRef.current)
+          maxComboRef.current = comboRef.current
       } else {
         playHitSound()
         showJudgement('Good', 'text-orange-500')
@@ -219,7 +223,8 @@ export default function PlayCustom() {
         })
         countsRef.current.good += 1
         comboRef.current++
-        if (comboRef.current > maxComboRef.current) maxComboRef.current = comboRef.current
+        if (comboRef.current > maxComboRef.current)
+          maxComboRef.current = comboRef.current
       }
       notesRef.current[bestMatchIndex].hit = true
     },
@@ -285,11 +290,14 @@ export default function PlayCustom() {
 
   return (
     <div className="relative h-screen overflow-hidden bg-black">
-     
       {/* スコア表示 */}
       <div className="absolute left-4 top-16 text-xl text-white">
-        Score: {score}<br />
-        <span>最大コンボ: {maxComboRef.current}　合計コンボ: {(countsRef.current.perfect ?? 0) + (countsRef.current.good ?? 0)}</span>
+        Score: {score}
+        <br />
+        <span>
+          最大コンボ: {maxComboRef.current} 合計コンボ:{' '}
+          {(countsRef.current.perfect ?? 0) + (countsRef.current.good ?? 0)}
+        </span>
       </div>
       {/* 判定ライン・ノーツ描画 */}
       {isVertical ? (

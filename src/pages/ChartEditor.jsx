@@ -111,7 +111,7 @@ const EditorLane = React.memo(
             {/* 拍ごとの縦線 */}
             {Array.from({ length: beatCount + 1 }).map((_, i) => (
               <div
-                key={"beat-" + i}
+                key={'beat-' + i}
                 className="absolute top-0 bottom-0 w-px bg-white/20"
                 style={{ left: i * gridStep }}
               />
@@ -119,7 +119,7 @@ const EditorLane = React.memo(
             {/* 1秒ごとのラベル */}
             {Array.from({ length: Math.floor(duration) + 1 }).map((_, sec) => (
               <div
-                key={"sec-label-" + sec}
+                key={'sec-label-' + sec}
                 className="absolute text-xs text-white/80 select-none"
                 style={{
                   left: (sec / duration) * gridWidth,
@@ -134,24 +134,26 @@ const EditorLane = React.memo(
                 {sec + 1}
               </div>
             ))}
-            {React.useMemo(() => (
-              notes
-                .filter(n => n.lane === lane)
-                .map((n, i) => (
-                  <div
-                    key={i}
-                    className={`absolute rounded-full ${colorConfig.note} ${colorConfig.noteBorder} border-2 shadow-lg`}
-                    style={{
-                      left: getX(n.time) - NOTE_RADIUS,
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      width: NOTE_RADIUS * 2,
-                      height: NOTE_RADIUS * 2,
-                      zIndex: 20,
-                    }}
-                  />
-                ))
-            ), [notes, lane, colorConfig, getX])}
+            {React.useMemo(
+              () =>
+                notes
+                  .filter(n => n.lane === lane)
+                  .map((n, i) => (
+                    <div
+                      key={i}
+                      className={`absolute rounded-full ${colorConfig.note} ${colorConfig.noteBorder} border-2 shadow-lg`}
+                      style={{
+                        left: getX(n.time) - NOTE_RADIUS,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        width: NOTE_RADIUS * 2,
+                        height: NOTE_RADIUS * 2,
+                        zIndex: 20,
+                      }}
+                    />
+                  )),
+              [notes, lane, colorConfig, getX]
+            )}
           </div>
         </div>
       )
@@ -632,7 +634,9 @@ export default function ChartEditor() {
                 // 他レーンのノーツはそのまま、該当レーンだけ差し替え
                 setNotes(prevNotes => {
                   const otherNotes = prevNotes.filter(n => n.lane !== index)
-                  return [...otherNotes, ...newLaneNotes].sort((a, b) => a.time - b.time)
+                  return [...otherNotes, ...newLaneNotes].sort(
+                    (a, b) => a.time - b.time
+                  )
                 })
               }
               return (

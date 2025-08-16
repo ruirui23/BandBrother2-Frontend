@@ -112,7 +112,12 @@ export default function useGameCore(songData, difficulty, onGameEnd, keyMaps) {
         setGameState('finished')
         sound.stop()
         if (onGameEnd) {
-          onGameEnd({ counts, score, maxCombo: maxComboRef.current, lastCombo: comboRef.current })
+          onGameEnd({
+            counts,
+            score,
+            maxCombo: maxComboRef.current,
+            lastCombo: comboRef.current,
+          })
         }
       }
     }
