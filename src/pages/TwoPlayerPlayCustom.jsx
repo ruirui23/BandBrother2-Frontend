@@ -16,6 +16,7 @@ const JUDGE = { perfect: 24, good: 48 }
 // --- Player 1/2 キー設定をlocalStorageから取得 ---
 const P1_LANE_Y_POS = [-96, -32, 32, 96]
 const P2_LANE_Y_POS = [-96, -32, 32, 96]
+
 function getKeySettings() {
   try {
     return (
@@ -159,8 +160,6 @@ export default function TwoPlayerPlayCustom() {
 
     p1ScoreRef.current = { perfect: 0, good: 0, miss: 0, score: 0 }
     p2ScoreRef.current = { perfect: 0, good: 0, miss: 0, score: 0 }
-    setP1Score({ perfect: 0, good: 0, miss: 0, score: 0 })
-    setP2Score({ perfect: 0, good: 0, miss: 0, score: 0 })
     fetchChart()
     return () => {
       soundRef.current?.unload()
@@ -201,7 +200,6 @@ export default function TwoPlayerPlayCustom() {
         setJudgementColor1('text-blue-400')
         p1ScoreRef.current.score -= 2
         p1ComboRef.current = 0 // ミスでコンボリセット
-        setP1Score({ ...p1ScoreRef.current })
         p1Changed = true
         return { ...n, missed: true }
       }
@@ -216,7 +214,6 @@ export default function TwoPlayerPlayCustom() {
         setJudgementColor2('text-blue-400')
         p2ScoreRef.current.score -= 2
         p2ComboRef.current = 0 // ミスでコンボリセット
-        setP2Score({ ...p2ScoreRef.current })
         p2Changed = true
         return { ...n, missed: true }
       }
@@ -490,14 +487,16 @@ export default function TwoPlayerPlayCustom() {
           1P: {p1ScoreRef.current.score}
           <br />
           <span>
-            最大コンボ: {p1MaxComboRef.current} 合計コンボ: {(p1ScoreRef.current.perfect ?? 0) + (p1ScoreRef.current.good ?? 0)}
+            最大コンボ: {p1MaxComboRef.current} 合計コンボ:{' '}
+            {(p1ScoreRef.current.perfect ?? 0) + (p1ScoreRef.current.good ?? 0)}
           </span>
         </div>
         <div className="absolute right-4 top-4 text-xl">
           2P: {p2ScoreRef.current.score}
           <br />
           <span>
-            最大コンボ: {p2MaxComboRef.current} 合計コンボ: {(p2ScoreRef.current.perfect ?? 0) + (p2ScoreRef.current.good ?? 0)}
+            最大コンボ: {p2MaxComboRef.current} 合計コンボ:{' '}
+            {(p2ScoreRef.current.perfect ?? 0) + (p2ScoreRef.current.good ?? 0)}
           </span>
         </div>
         {/* Backボタンは未開始時のみ表示 */}
@@ -609,14 +608,16 @@ export default function TwoPlayerPlayCustom() {
         1P: {p1ScoreRef.current.score}
         <br />
         <span>
-          最大コンボ: {p1MaxComboRef.current} 合計コンボ: {(p1ScoreRef.current.perfect ?? 0) + (p1ScoreRef.current.good ?? 0)}
+          最大コンボ: {p1MaxComboRef.current} 合計コンボ:{' '}
+          {(p1ScoreRef.current.perfect ?? 0) + (p1ScoreRef.current.good ?? 0)}
         </span>
       </div>
       <div className="absolute left-4 bottom-4 text-xl">
         2P: {p2ScoreRef.current.score}
         <br />
         <span>
-          最大コンボ: {p2MaxComboRef.current} 合計コンボ: {(p2ScoreRef.current.perfect ?? 0) + (p2ScoreRef.current.good ?? 0)}
+          最大コンボ: {p2MaxComboRef.current} 合計コンボ:{' '}
+          {(p2ScoreRef.current.perfect ?? 0) + (p2ScoreRef.current.good ?? 0)}
         </span>
       </div>
     </div>

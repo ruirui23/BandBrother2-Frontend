@@ -141,7 +141,7 @@ const MatchRoom = () => {
   // --- パフォーマンス計測・警告 ---
   // このコードは開発者向けの警告のみを出します。UIやゲームロジックには影響しません。
   if (typeof window !== 'undefined') {
-  // let last = performance.now()
+    // let last = performance.now()
     let frames = 0
     setInterval(() => {
       if (frames < 50) {
@@ -150,7 +150,7 @@ const MatchRoom = () => {
         )
       }
       frames = 0
-  // last = performance.now()
+      // last = performance.now()
     }, 1000)
     function countFrame() {
       frames++
