@@ -34,6 +34,31 @@ function getKeyMaps() {
 import { useGameLayout } from '../store'
 
 export default function PlayCustom() {
+  // FPS監視用
+  const [lowFps, setLowFps] = useState(false)
+  const fpsRef = useRef({ last: performance.now(), frames: 0, fps: 60, lowCount: 0 })
+  useEffect(() => {
+    let running = true
+    function checkFps() {
+      const now = performance.now()
+      fpsRef.current.frames++
+      if (now - fpsRef.current.last >= 1000) {
+        const fps = fpsRef.current.frames / ((now - fpsRef.current.last) / 1000)
+        fpsRef.current.fps = fps
+        fpsRef.current.last = now
+        fpsRef.current.frames = 0
+        if (fps < 50) {
+          fpsRef.current.lowCount++
+        } else {
+          fpsRef.current.lowCount = 0
+        }
+        setLowFps(fpsRef.current.lowCount >= 2)
+      }
+      if (running) requestAnimationFrame(checkFps)
+    }
+    requestAnimationFrame(checkFps)
+    return () => { running = false }
+  }, [])
   // ノーツスピード倍率をlocalStorageから取得
   const getNoteSpeedMultiplier = () => {
     try {
@@ -315,6 +340,11 @@ export default function PlayCustom() {
 
   return (
     <div className="relative h-screen overflow-hidden bg-black">
+      {lowFps && (
+        <div className="fixed top-4 right-4 z-50 px-4 py-2 bg-red-600 text-white text-lg font-bold rounded shadow-lg animate-pulse">
+          ⚠️ フレームレートが低下しています（50FPS未満）
+        </div>
+      )}
       {/* スコア表示 */}
       <div className="absolute left-8 top-8 flex flex-col gap-2 z-20">
         <div className="text-5xl font-extrabold text-yellow-300 drop-shadow-lg">

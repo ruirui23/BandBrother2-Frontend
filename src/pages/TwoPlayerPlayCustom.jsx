@@ -48,6 +48,31 @@ const ALL_VALID_KEYS = [
 ]
 
 export default function TwoPlayerPlayCustom() {
+  // FPS監視用
+  const [lowFps, setLowFps] = useState(false)
+  const fpsRef = useRef({ last: performance.now(), frames: 0, fps: 60, lowCount: 0 })
+  useEffect(() => {
+    let running = true
+    function checkFps() {
+      const now = performance.now()
+      fpsRef.current.frames++
+      if (now - fpsRef.current.last >= 1000) {
+        const fps = fpsRef.current.frames / ((now - fpsRef.current.last) / 1000)
+        fpsRef.current.fps = fps
+        fpsRef.current.last = now
+        fpsRef.current.frames = 0
+        if (fps < 50) {
+          fpsRef.current.lowCount++
+        } else {
+          fpsRef.current.lowCount = 0
+        }
+        setLowFps(fpsRef.current.lowCount >= 2)
+      }
+      if (running) requestAnimationFrame(checkFps)
+    }
+    requestAnimationFrame(checkFps)
+    return () => { running = false }
+  }, [])
   const { isVertical } = useGameLayout() // レイアウトの方向を取得
   const { chartId } = useParams()
   const nav = useNavigate()
@@ -434,6 +459,11 @@ export default function TwoPlayerPlayCustom() {
 
     return (
       <div className="relative h-screen w-screen overflow-hidden bg-black text-white">
+        {lowFps && (
+          <div className="fixed top-4 right-4 z-50 px-4 py-2 bg-red-600 text-white text-lg font-bold rounded shadow-lg animate-pulse">
+            ⚠️ フレームレートが低下しています（50FPS未満）
+          </div>
+        )}
         {/* 1P判定表示 */}
         <div
           className={`absolute left-[25%] top-[40%] -translate-x-1/2 text-2xl font-bold drop-shadow transition-all duration-500 pointer-events-none z-20
