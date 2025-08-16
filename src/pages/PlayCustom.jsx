@@ -36,7 +36,12 @@ import { useGameLayout } from '../store'
 export default function PlayCustom() {
   // FPS監視用
   const [lowFps, setLowFps] = useState(false)
-  const fpsRef = useRef({ last: performance.now(), frames: 0, fps: 60, lowCount: 0 })
+  const fpsRef = useRef({
+    last: performance.now(),
+    frames: 0,
+    fps: 60,
+    lowCount: 0,
+  })
   useEffect(() => {
     let running = true
     function checkFps() {
@@ -57,7 +62,9 @@ export default function PlayCustom() {
       if (running) requestAnimationFrame(checkFps)
     }
     requestAnimationFrame(checkFps)
-    return () => { running = false }
+    return () => {
+      running = false
+    }
   }, [])
   // ノーツスピード倍率をlocalStorageから取得
   const getNoteSpeedMultiplier = () => {

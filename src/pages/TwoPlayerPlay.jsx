@@ -48,7 +48,12 @@ const ALL_VALID_KEYS = [
 export default function TwoPlayerPlay() {
   // FPS監視用
   const [lowFps, setLowFps] = useState(false)
-  const fpsRef = useRef({ last: performance.now(), frames: 0, fps: 60, lowCount: 0 })
+  const fpsRef = useRef({
+    last: performance.now(),
+    frames: 0,
+    fps: 60,
+    lowCount: 0,
+  })
   useEffect(() => {
     let running = true
     function checkFps() {
@@ -69,7 +74,9 @@ export default function TwoPlayerPlay() {
       if (running) requestAnimationFrame(checkFps)
     }
     requestAnimationFrame(checkFps)
-    return () => { running = false }
+    return () => {
+      running = false
+    }
   }, [])
   // ノーツスピード倍率をlocalStorageから取得
   const getNoteSpeedMultiplier = () => {

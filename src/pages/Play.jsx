@@ -38,7 +38,12 @@ const LANE_X_POSITIONS = [-96, -32, 32, 96]
 export default function Play() {
   // FPS監視用
   const [lowFps, setLowFps] = useState(false)
-  const fpsRef = useRef({ last: performance.now(), frames: 0, fps: 60, lowCount: 0 })
+  const fpsRef = useRef({
+    last: performance.now(),
+    frames: 0,
+    fps: 60,
+    lowCount: 0,
+  })
 
   useEffect(() => {
     let running = true
@@ -60,7 +65,9 @@ export default function Play() {
       if (running) requestAnimationFrame(checkFps)
     }
     requestAnimationFrame(checkFps)
-    return () => { running = false }
+    return () => {
+      running = false
+    }
   }, [])
   // ノーツスピード倍率をlocalStorageから取得
   const getNoteSpeedMultiplier = () => {
