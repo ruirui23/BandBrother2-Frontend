@@ -1,4 +1,14 @@
-import { doc, setDoc, getDoc, serverTimestamp, collection, query, orderBy, limit, getDocs } from 'firebase/firestore'
+import {
+  doc,
+  setDoc,
+  getDoc,
+  serverTimestamp,
+  collection,
+  query,
+  orderBy,
+  limit,
+  getDocs,
+} from 'firebase/firestore'
 import { db } from '../firebase'
 
 /**
@@ -88,15 +98,15 @@ export async function getTopScoreForChart(chartId) {
     const rankingsRef = collection(db, 'charts', chartId, 'rankings')
     const q = query(rankingsRef, orderBy('score', 'desc'), limit(3))
     const querySnapshot = await getDocs(q)
-    
+
     if (querySnapshot.empty) {
       return {
         success: true,
         rankings: [],
-        message: 'まだスコアが記録されていません'
+        message: 'まだスコアが記録されていません',
       }
     }
-    
+
     const rankings = querySnapshot.docs.map((doc, index) => {
       const data = doc.data()
       return {
@@ -108,21 +118,21 @@ export async function getTopScoreForChart(chartId) {
         good: data.good,
         miss: data.miss,
         accuracy: data.accuracy,
-        timestamp: data.timestamp
+        timestamp: data.timestamp,
       }
     })
-    
+
     return {
       success: true,
       rankings: rankings,
-      message: 'ランキング取得成功'
+      message: 'ランキング取得成功',
     }
   } catch (error) {
     console.error('ランキング取得エラー:', error)
     return {
       success: false,
       rankings: [],
-      message: 'ランキングの取得に失敗しました'
+      message: 'ランキングの取得に失敗しました',
     }
   }
 }

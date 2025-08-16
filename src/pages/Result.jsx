@@ -2,7 +2,11 @@ import { Link, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { useAuthState } from 'react-firebase-hooks/auth'
 import { auth } from '../firebase'
-import { saveCustomChartScore, calculateAccuracy, getTopScoreForChart } from '../utils/scoreManager'
+import {
+  saveCustomChartScore,
+  calculateAccuracy,
+  getTopScoreForChart,
+} from '../utils/scoreManager'
 
 export default function Result() {
   const { state } = useLocation()
@@ -62,7 +66,7 @@ export default function Result() {
 
       setRankingsLoading(true)
       const result = await getTopScoreForChart(state.chartId)
-      
+
       if (result.success) {
         setRankings(result.rankings)
       }
@@ -383,52 +387,65 @@ export default function Result() {
             <h3 className="text-lg font-bold text-center text-white mb-4">
               🏆 ランキング TOP3
             </h3>
-            
+
             {rankingsLoading && (
               <div className="text-center text-gray-400 text-sm">
                 ランキングを取得中...
               </div>
             )}
-            
+
             {!rankingsLoading && rankings.length > 0 && (
               <div className="space-y-3">
-                {rankings.map((ranking) => {
-                  const getRankEmoji = (rank) => {
-                    switch(rank) {
-                      case 1: return '🥇'
-                      case 2: return '🥈'
-                      case 3: return '🥉'
-                      default: return '🏅'
+                {rankings.map(ranking => {
+                  const getRankEmoji = rank => {
+                    switch (rank) {
+                      case 1:
+                        return '🥇'
+                      case 2:
+                        return '🥈'
+                      case 3:
+                        return '🥉'
+                      default:
+                        return '🏅'
                     }
                   }
-                  
-                  const getRankColor = (rank) => {
-                    switch(rank) {
-                      case 1: return 'text-yellow-400'
-                      case 2: return 'text-gray-300'
-                      case 3: return 'text-amber-600'
-                      default: return 'text-gray-400'
+
+                  const getRankColor = rank => {
+                    switch (rank) {
+                      case 1:
+                        return 'text-yellow-400'
+                      case 2:
+                        return 'text-gray-300'
+                      case 3:
+                        return 'text-amber-600'
+                      default:
+                        return 'text-gray-400'
                     }
                   }
-                  
+
                   return (
-                    <div 
-                      key={ranking.userId} 
+                    <div
+                      key={ranking.userId}
                       className="flex items-center justify-between p-3 bg-white/5 rounded-lg"
                     >
                       <div className="flex items-center gap-3">
-                        <span className="text-xl">{getRankEmoji(ranking.rank)}</span>
+                        <span className="text-xl">
+                          {getRankEmoji(ranking.rank)}
+                        </span>
                         <div>
                           <div className="font-semibold text-white">
                             {ranking.userName}
                           </div>
                           <div className="text-xs text-gray-400">
-                            Perfect: {ranking.perfect} | Good: {ranking.good} | Miss: {ranking.miss}
+                            Perfect: {ranking.perfect} | Good: {ranking.good} |
+                            Miss: {ranking.miss}
                           </div>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className={`text-xl font-bold ${getRankColor(ranking.rank)}`}>
+                        <div
+                          className={`text-xl font-bold ${getRankColor(ranking.rank)}`}
+                        >
                           {ranking.score.toLocaleString()}
                         </div>
                         <div className="text-xs text-gray-400">
@@ -440,7 +457,7 @@ export default function Result() {
                 })}
               </div>
             )}
-            
+
             {!rankingsLoading && rankings.length === 0 && (
               <div className="text-center text-gray-400 text-sm">
                 まだ記録がありません
