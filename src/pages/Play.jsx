@@ -1,262 +1,282 @@
 // src/pages/Play.jsx
 import { useParams, useNavigate } from 'react-router-dom'
-import { useEffect, useState, useCallback, useRef } from 'react'
-import { Howl } from 'howler'
+import { useEffect, useState, useRef } from 'react'
 import song from '../data/tutorial.json'
-import { useScore } from '../store'
-import useGameLoop from '../hooks/useGameLoop'
-import { HIT_X, NOTE_SPEED, WINDOW_SEC } from '../constants'
+import useGameCore from '../hooks/useGameCore'
+import { HIT_X, NOTE_SPEED } from '../constants'
+import { playHitSound } from '../utils/soundEffects'
+import { useGameLayout } from '../store.js'
 import Note from '../components/Note'
 import HitLine from '../components/HitLine'
 
-const JUDGE = { perfect: 24, good: 48 } // px単位: perfect=24px(0.04s*300), good=48px(0.10s*300)
-
-// レーンのY座標を定義
-const LANE_Y_POSITIONS = [-96, -32, 32, 96]
-
-// キーとレーンのマッピング
-const KEY_TO_LANE = {
-  KeyD: 0,
-  KeyF: 1,
-  KeyJ: 2,
-  KeyK: 3,
+// localStorageからキー設定を取得
+function getSingleKeyMaps() {
+  const saved = localStorage.getItem('keySettings')
+  let keys = ['D', 'F', 'J', 'K']
+  if (saved) {
+    try {
+      const obj = JSON.parse(saved)
+      if (obj.single && Array.isArray(obj.single) && obj.single.length === 4) {
+        keys = obj.single
+      }
+    } catch {
+      // ignore
+    }
+  }
+  // 例: { KeyD:0, KeyF:1, KeyJ:2, KeyK:3 }
+  const KEY_TO_LANE = {}
+  keys.forEach((k, i) => {
+    KEY_TO_LANE['Key' + k.toUpperCase()] = i
+  })
+  const VALID_KEYS = Object.keys(KEY_TO_LANE)
+  return { KEY_TO_LANE, VALID_KEYS }
 }
-const VALID_KEYS = Object.keys(KEY_TO_LANE)
+
+// レーンのX座標を定義
+const LANE_X_POSITIONS = [-96, -32, 32, 96]
 
 export default function Play() {
+  // FPS監視用
+  const [lowFps, setLowFps] = useState(false)
+  const fpsRef = useRef({
+    last: performance.now(),
+    frames: 0,
+    fps: 60,
+    lowCount: 0,
+  })
+
+  useEffect(() => {
+    let running = true
+    function checkFps() {
+      const now = performance.now()
+      fpsRef.current.frames++
+      if (now - fpsRef.current.last >= 1000) {
+        const fps = fpsRef.current.frames / ((now - fpsRef.current.last) / 1000)
+        fpsRef.current.fps = fps
+        fpsRef.current.last = now
+        fpsRef.current.frames = 0
+        if (fps < 50) {
+          fpsRef.current.lowCount++
+        } else {
+          fpsRef.current.lowCount = 0
+        }
+        setLowFps(fpsRef.current.lowCount >= 2) // 2秒連続で50未満なら警告
+      }
+      if (running) requestAnimationFrame(checkFps)
+    }
+    requestAnimationFrame(checkFps)
+    return () => {
+      running = false
+    }
+  }, [])
+  // ノーツスピード倍率をlocalStorageから取得
+  const getNoteSpeedMultiplier = () => {
+    try {
+      return parseFloat(localStorage.getItem('noteSpeedMultiplier')) || 1.0
+    } catch {
+      return 1.0
+    }
+  }
+  const [noteSpeedMultiplier, setNoteSpeedMultiplier] = useState(
+    getNoteSpeedMultiplier()
+  )
+  useEffect(() => {
+    const onStorage = e => {
+      if (e.key === 'noteSpeedMultiplier') {
+        setNoteSpeedMultiplier(getNoteSpeedMultiplier())
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
   /* ---------- URL パラメータ ---------- */
   const { difficulty = 'Easy' } = useParams()
   const nav = useNavigate()
 
-  /* ---------- スコア ---------- */
-  const { add, reset, counts, score } = useScore()
+  /* ---------- ゲーム終了時の処理 ---------- */
+  const handleGameEnd = ({ counts, score, maxCombo }) => {
+    // 合計コンボ数 = perfect + good
+    const lastCombo = (counts.perfect ?? 0) + (counts.good ?? 0)
+    setTimeout(() => {
+      nav('/result', { state: { counts, score, maxCombo, lastCombo } })
+    }, 500)
+  }
 
-  /* ---------- 曲・譜面データ ---------- */
-  const diffObj = song.difficulty[difficulty] || song.difficulty.Easy
-  const offset = song.offset ?? 0 // undefined → 0
+  /* ---------- 共通ゲームロジック ---------- */
+  const keyMaps = getSingleKeyMaps()
+  const {
+    notes: visibleNotes,
+    time,
+    offset,
+    started,
+    score,
+    counts,
+    sound,
+    startGame,
+    setOnJudgment,
+    KEY_TO_LANE,
+    VALID_KEYS,
+    maxCombo,
+    // combo,
+  } = useGameCore(song, difficulty, handleGameEnd, keyMaps)
 
-  const notesRef = useRef([])
-  const [started, setStarted] = useState(false)
-  const [time, setTime] = useState(0)
-  const [isSoundLoaded, setIsSoundLoaded] = useState(false)
-
-  const soundRef = useRef(null)
-  const scoreRef = useRef({ counts, score })
   /* ---------- 判定表示 ---------- */
-  const [judgement, setJudgement] = useState('')
+  const [judgement, setJudgement] = useState('') // 判定表示用の状態
   const [visible, setVisible] = useState(false)
-  const [_ANIMATING, _SET_ANIMATING] = useState(false)
-  const timeoutRef = useRef(null)
   const [judgementColor, setJudgementColor] = useState('text-yellow-400')
+  const scoreRef = useRef({ counts, score })
 
+  // スコア参照の更新
   useEffect(() => {
-    return useScore.subscribe(
-      state => (scoreRef.current = { counts: state.counts, score: state.score })
-    )
-  }, [])
+    scoreRef.current = { counts, score }
+  }, [counts, score])
 
+  // 最初のキー入力でゲーム開始
   useEffect(() => {
-    reset()
-    notesRef.current = (diffObj.notes ?? [])
-      .sort((a, b) => a.time - b.time)
-      .map(n => ({
-        ...n,
-        id: `${n.time}-${n.lane}`,
-        hit: false,
-        missed: false,
-      }))
-
-    soundRef.current = new Howl({
-      src: [song.audio],
-      html5: true,
-      preload: true,
-      onload: () => setIsSoundLoaded(true),
-      onend: () => {
-        setTimeout(() => {
-          nav('/result', { state: scoreRef.current })
-        }, 500)
-      },
-    })
-
-    return () => {
-      soundRef.current?.stop()
-      soundRef.current?.unload()
-    }
-  }, [difficulty, reset, nav, diffObj.notes])
-
-  useEffect(() => {
-    if (!isSoundLoaded || !soundRef.current) return
+    if (!sound) return
 
     const onFirstKey = () => {
-      if (!soundRef.current.playing()) {
-        soundRef.current.play()
-        setStarted(true)
+      if (!started) {
+        startGame()
       }
     }
     window.addEventListener('keydown', onFirstKey, { once: true })
     return () => {
       window.removeEventListener('keydown', onFirstKey)
     }
-  }, [isSoundLoaded])
-
-  useGameLoop(() => {
-    if (!started || !soundRef.current) return
-    const newTime = soundRef.current.seek()
-    if (typeof newTime !== 'number') return
-    setTime(newTime)
-
-    let misses = 0
-    for (const n of notesRef.current) {
-      if (!n.hit && !n.missed && newTime - (n.time - offset) > 0.2) {
-        n.missed = true
-        misses++
-      }
-    }
-    if (misses > 0) {
-      for (let i = 0; i < misses; i++) {
-        add('miss')
-        showJudgement('Miss')
-        setJudgementColor('text-blue-400')
-      }
-    }
-  })
+  }, [sound, started, startGame])
 
   const showJudgement = text => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current)
     setJudgement(text)
     setVisible(true)
-
     setTimeout(() => {
       setVisible(false)
-      _SET_ANIMATING(false)
     }, 500) // 0.5秒で消す
   }
 
-  const onKey = useCallback(
-    e => {
-      if (!started || !VALID_KEYS.includes(e.code)) return
-
-      const lane = KEY_TO_LANE[e.code]
-      const currentTime = soundRef.current?.seek() || 0
-
-      // 押されたキーに対応するレーンの中で、最も判定ラインに近いノーツを探す
-      let bestMatchIndex = -1
-      let minDistance = Infinity
-
-      notesRef.current.forEach((n, index) => {
-        if (n.lane !== lane || n.hit || n.missed) return
-
-        const distance = Math.abs(
-          HIT_X - (HIT_X + (n.time - currentTime - offset) * NOTE_SPEED)
-        )
-
-        if (distance < JUDGE.good && distance < minDistance) {
-          minDistance = distance
-          bestMatchIndex = index
-        }
-      })
-
-      if (bestMatchIndex === -1) {
-        // 対応レーンに叩けるノーツがなければミス（お好みで）
-        // add('miss');
-        return
-      }
-
-      const note = notesRef.current[bestMatchIndex]
-      if (minDistance < JUDGE.perfect) {
-        add('perfect')
+  // 判定結果コールバックの設定
+  useEffect(() => {
+    setOnJudgment(judgmentType => {
+      if (judgmentType === 'perfect') {
+        playHitSound()
         showJudgement('Perfect')
         setJudgementColor('text-yellow-400')
-      } else {
-        add('good')
+      } else if (judgmentType === 'good') {
+        playHitSound()
         showJudgement('Good')
         setJudgementColor('text-orange-500')
+      } else if (judgmentType === 'miss') {
+        showJudgement('Miss')
+        setJudgementColor('text-blue-400')
       }
-      note.hit = true
-      setTime(currentTime) // Force re-render
-    },
-    [started, offset, add]
-  )
+    })
+  }, [setOnJudgment])
 
-  useEffect(() => {
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onKey])
-
-  /* ---------- 描画対象ノーツ ---------- */
-  const visibleNotes = notesRef.current.filter(
-    n => !n.hit && !n.missed && Math.abs(n.time - time - offset) < WINDOW_SEC
-  )
-
-  const screenCenterY =
-    typeof window !== 'undefined' ? window.innerHeight / 2 : 0
-
-  /* ---------- 描画 ---------- */
-  if (!isSoundLoaded)
-    return (
-      <div className="flex items-center justify-center h-screen bg-black text-white text-2xl">
-        Loading...
-      </div>
-    )
-  if (!started)
-    return (
-      <div className="flex flex-col items-center justify-center h-screen bg-black text-white text-center">
-        <div className="text-2xl mb-4">
-          上のレーンからD，F，J，Kを押してプレイしてね
-        </div>
-        <div className="text-xl text-gray-300">タップしてスタート</div>
-      </div>
-    )
+  const { isVertical } = useGameLayout()
+  // 画面サイズ・判定枠座標
+  const screenHeight = typeof window !== 'undefined' ? window.innerHeight : 800
+  const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 600
+  const HIT_Y = screenHeight - 100
+  const HIT_X = 160
+  const circleSize = 64
+  const yPos = HIT_Y - circleSize / 4
 
   return (
     <div className="relative h-screen overflow-hidden bg-black">
-      <button
-        className="absolute left-4 top-4 px-4 py-2 bg-gray-600 text-white rounded z-30"
-        onClick={() => nav(-1)}
-      >
-        Back
-      </button>
-      <div className="relative w-full h-screen bg-black overflow-hidden">
-        {/* 判定表示（中央） */}
-        <div
-          className={`absolute top-[40%] left-1/2 transform -translate-x-1/2 text-4xl font-bold drop-shadow transition-all duration-500 pointer-events-none
-          ${
-            visible ? 'opacity-100 scale-150' : 'opacity-0 scale-100'
-          } ${judgementColor}`}
-        >
-          {judgement}
+      {/* FPS低下警告 */}
+      {lowFps && (
+        <div className="fixed top-4 right-4 z-50 px-4 py-2 bg-red-600 text-white text-lg font-bold rounded shadow-lg animate-pulse">
+          ⚠️ フレームレートが低下しています（50FPS未満）
         </div>
-        {/* スコア表示 */}
-        <div className="absolute left-4 top-16 text-xl text-white">
-          Score: {score}
+      )}
+      {/* スコア表示（大きく・目立つUI） */}
+      <div className="absolute left-8 top-8 flex flex-col gap-2 z-20">
+        <div className="text-5xl font-extrabold text-yellow-300 drop-shadow-lg">
+          <span className="text-white text-3xl align-top">Score</span>
+          <span className="ml-4 text-yellow-400 text-6xl">{score}</span>
         </div>
-
-        {/* 4本の判定ライン */}
-        {LANE_Y_POSITIONS.map((y, index) => (
-          <div
-            key={index}
-            style={{ top: `calc(50% + ${y}px)` }}
-            className="absolute left-0 right-0 transform -translate-y-1/2"
-          >
-            <HitLine lane={index} />
+        <div className="flex gap-8 mt-2">
+          <div className="text-2xl font-bold text-blue-300 bg-black/60 rounded px-4 py-2 border-2 border-blue-400 shadow">
+            最大コンボ
+            <br />
+            <span className="text-4xl text-blue-200">{maxCombo ?? 0}</span>
           </div>
-        ))}
+          <div className="text-2xl font-bold text-pink-300 bg-black/60 rounded px-4 py-2 border-2 border-pink-400 shadow">
+            合計コンボ
+            <br />
+            <span className="text-4xl text-pink-200">
+              {(counts.perfect ?? 0) + (counts.good ?? 0)}
+            </span>
+          </div>
+        </div>
       </div>
-
-      {/* スコア表示 */}
-
+      {/* 判定ライン・ノーツ描画 */}
+      {isVertical ? (
+        // 縦画面（上から下）
+        <div
+          className="absolute flex justify-center w-full"
+          style={{ top: `${yPos}px`, pointerEvents: 'none' }}
+        >
+          <div style={{ display: 'flex' }}>
+            {[0, 1, 2, 3].map(index => (
+              <HitLine key={index} yOffset={0} />
+            ))}
+          </div>
+        </div>
+      ) : (
+        // 横画面（右から左）
+        <div
+          className="absolute flex flex-col items-center"
+          style={{
+            left: `${circleSize * 2}px`, // 〇2つ分右にずらす
+            top: `${screenHeight / 2 - circleSize * 2}px`,
+            height: `${circleSize * 4}px`,
+            pointerEvents: 'none',
+          }}
+        >
+          {[0, 1, 2, 3].map((lane, idx) => (
+            <HitLine key={idx} yOffset={0} />
+          ))}
+        </div>
+      )}
       {/* ノーツ表示 */}
       {visibleNotes.map(n => {
-        const yPos = screenCenterY + LANE_Y_POSITIONS[n.lane]
-        return (
-          <Note
-            key={n.id}
-            x={HIT_X + (n.time - time - offset) * NOTE_SPEED}
-            y={yPos}
-            lane={n.lane}
-          />
-        )
+        if (isVertical) {
+          // 上から下
+          const xPos = screenWidth / 2 + LANE_X_POSITIONS[n.lane || 0]
+          return (
+            <Note
+              key={n.id}
+              x={xPos}
+              y={
+                HIT_Y -
+                (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier
+              }
+              lane={n.lane || 0}
+            />
+          )
+        } else {
+          // 右から左
+          const yPos = screenHeight / 2 + LANE_X_POSITIONS[n.lane || 0]
+          return (
+            <Note
+              key={n.id}
+              x={
+                HIT_X +
+                (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier
+              }
+              y={yPos}
+              lane={n.lane || 0}
+            />
+          )
+        }
       })}
+      {/* 判定表示（画面中央） */}
+      <div
+        className={`absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-4xl font-bold drop-shadow transition-all duration-500 pointer-events-none ${visible ? 'opacity-100 scale-150' : 'opacity-0 scale-100'} ${judgementColor}`}
+      >
+        {judgement}
+      </div>
     </div>
   )
 }

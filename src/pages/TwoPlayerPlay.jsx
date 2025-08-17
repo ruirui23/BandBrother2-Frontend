@@ -1,35 +1,117 @@
+// 255:13 error  Empty block statement  no-empty
 import { useParams, useNavigate } from 'react-router-dom'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { Howl } from 'howler'
 import songData from '../data/tutorial.json'
 import { HIT_X, NOTE_SPEED, WINDOW_SEC } from '../constants'
+import { playHitSound } from '../utils/soundEffects'
 import Note from '../components/Note'
 import HitLine from '../components/HitLine'
 import useGameLoop from '../hooks/useGameLoop'
+import { useGameLayout } from '../store.js'
 
 const JUDGE = { perfect: 24, good: 48 }
 
-// --- Player 1 (Top Screen) ---
+// --- Player 1/2 キー設定をlocalStorageから取得 ---
 const P1_LANE_Y_POS = [-96, -32, 32, 96]
-const P1_KEY_TO_LANE = { KeyQ: 0, KeyW: 1, KeyE: 2, KeyR: 3 }
-
-// --- Player 2 (Bottom Screen) ---
 const P2_LANE_Y_POS = [-96, -32, 32, 96]
-const P2_KEY_TO_LANE = { KeyU: 0, KeyI: 1, KeyO: 2, KeyP: 3 }
-
+function getKeySettings() {
+  try {
+    return (
+      JSON.parse(localStorage.getItem('keySettings')) || {
+        p1: ['Q', 'W', 'E', 'R'],
+        p2: ['U', 'I', 'O', 'P'],
+      }
+    )
+  } catch {
+    return { p1: ['Q', 'W', 'E', 'R'], p2: ['U', 'I', 'O', 'P'] }
+  }
+}
+const userKeys = getKeySettings()
+const P1_KEY_TO_LANE = Object.fromEntries(
+  (userKeys.p1 || ['Q', 'W', 'E', 'R']).map((k, i) => [
+    `Key${k.toUpperCase()}`,
+    i,
+  ])
+)
+const P2_KEY_TO_LANE = Object.fromEntries(
+  (userKeys.p2 || ['U', 'I', 'O', 'P']).map((k, i) => [
+    `Key${k.toUpperCase()}`,
+    i,
+  ])
+)
 const ALL_VALID_KEYS = [
   ...Object.keys(P1_KEY_TO_LANE),
   ...Object.keys(P2_KEY_TO_LANE),
 ]
 
 export default function TwoPlayerPlay() {
-  const { p1 = 'Easy' } = useParams()
+  // FPS監視用
+  const [lowFps, setLowFps] = useState(false)
+  const fpsRef = useRef({
+    last: performance.now(),
+    frames: 0,
+    fps: 60,
+    lowCount: 0,
+  })
+  useEffect(() => {
+    let running = true
+    function checkFps() {
+      const now = performance.now()
+      fpsRef.current.frames++
+      if (now - fpsRef.current.last >= 1000) {
+        const fps = fpsRef.current.frames / ((now - fpsRef.current.last) / 1000)
+        fpsRef.current.fps = fps
+        fpsRef.current.last = now
+        fpsRef.current.frames = 0
+        if (fps < 50) {
+          fpsRef.current.lowCount++
+        } else {
+          fpsRef.current.lowCount = 0
+        }
+        setLowFps(fpsRef.current.lowCount >= 2)
+      }
+      if (running) requestAnimationFrame(checkFps)
+    }
+    requestAnimationFrame(checkFps)
+    return () => {
+      running = false
+    }
+  }, [])
+  // ノーツスピード倍率をlocalStorageから取得
+  const getNoteSpeedMultiplier = () => {
+    try {
+      return parseFloat(localStorage.getItem('noteSpeedMultiplier')) || 1.0
+    } catch {
+      return 1.0
+    }
+  }
+  const [noteSpeedMultiplier, setNoteSpeedMultiplier] = useState(
+    getNoteSpeedMultiplier()
+  )
+  useEffect(() => {
+    const onStorage = e => {
+      if (e.key === 'noteSpeedMultiplier') {
+        setNoteSpeedMultiplier(getNoteSpeedMultiplier())
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
+  const { p1 = 'Easy' } = useParams() // URLパラメータから難易度を取得
   const nav = useNavigate()
   const offset = songData.offset ?? 0
+  // useGameLayoutを最上部で呼び出し
+  const { isVertical } = useGameLayout()
 
   const [notes, setNotes] = useState({ p1: [], p2: [] })
   const p1ScoreRef = useRef({ perfect: 0, good: 0, miss: 0, score: 0 })
   const p2ScoreRef = useRef({ perfect: 0, good: 0, miss: 0, score: 0 })
+  // 最大コンボ用
+  const p1ComboRef = useRef(0)
+  const p1MaxComboRef = useRef(0)
+  const p2ComboRef = useRef(0)
+  const p2MaxComboRef = useRef(0)
 
   const [started, setStarted] = useState(false)
   const [time, setTime] = useState(0)
@@ -71,12 +153,23 @@ export default function TwoPlayerPlay() {
       src: [songData.audio],
       html5: true,
       onend: () => {
+        // 合計コンボ数 = perfect + good
+        const lastCombo1 =
+          (p1ScoreRef.current.perfect ?? 0) + (p1ScoreRef.current.good ?? 0)
+        const lastCombo2 =
+          (p2ScoreRef.current.perfect ?? 0) + (p2ScoreRef.current.good ?? 0)
+        const maxCombo1 = p1MaxComboRef.current
+        const maxCombo2 = p2MaxComboRef.current
         nav('/result', {
           state: {
             counts1: p1ScoreRef.current,
             score1: p1ScoreRef.current.score,
+            lastCombo1,
+            maxCombo1,
             counts2: p2ScoreRef.current,
             score2: p2ScoreRef.current.score,
+            lastCombo2,
+            maxCombo2,
           },
         })
       },
@@ -117,6 +210,7 @@ export default function TwoPlayerPlay() {
         showJudgement1('Miss')
         setJudgementColor1('text-blue-400')
         p1ScoreRef.current.score -= 2
+        p1ComboRef.current = 0 // ミスでコンボリセット
         p1Changed = true
         return { ...n, missed: true }
       }
@@ -130,6 +224,7 @@ export default function TwoPlayerPlay() {
         showJudgement2('Miss')
         setJudgementColor2('text-blue-400')
         p2ScoreRef.current.score -= 2
+        p2ComboRef.current = 0 // ミスでコンボリセット
         p2Changed = true
         return { ...n, missed: true }
       }
@@ -165,6 +260,8 @@ export default function TwoPlayerPlay() {
         ? P1_KEY_TO_LANE[e.code]
         : P2_KEY_TO_LANE[e.code]
       const scoreRef = isP1Key ? p1ScoreRef : p2ScoreRef
+      const comboRef = isP1Key ? p1ComboRef : p2ComboRef
+      const maxComboRef = isP1Key ? p1MaxComboRef : p2MaxComboRef
 
       let bestMatchIndex = -1
       let minDistance = Infinity
@@ -172,7 +269,11 @@ export default function TwoPlayerPlay() {
       notes[player].forEach((n, index) => {
         if (n.lane !== targetLane || n.hit || n.missed) return
         const distance = Math.abs(
-          HIT_X - (HIT_X + (n.time - currentTime - offset) * NOTE_SPEED)
+          HIT_X -
+            (HIT_X +
+              (n.time - currentTime - offset) *
+                NOTE_SPEED *
+                noteSpeedMultiplier)
         )
         if (distance < JUDGE.good && distance < minDistance) {
           minDistance = distance
@@ -183,8 +284,12 @@ export default function TwoPlayerPlay() {
       if (bestMatchIndex === -1) return
 
       if (minDistance < JUDGE.perfect) {
+        playHitSound()
         scoreRef.current.perfect++
         scoreRef.current.score += 5
+        comboRef.current++
+        if (comboRef.current > maxComboRef.current)
+          maxComboRef.current = comboRef.current
         if (isP1Key) {
           showJudgement1('Perfect')
           setJudgementColor1('text-yellow-400')
@@ -193,8 +298,12 @@ export default function TwoPlayerPlay() {
           setJudgementColor2('text-yellow-400')
         }
       } else {
+        playHitSound()
         scoreRef.current.good++
         scoreRef.current.score += 2
+        comboRef.current++
+        if (comboRef.current > maxComboRef.current)
+          maxComboRef.current = comboRef.current
         if (isP1Key) {
           showJudgement1('Good')
           setJudgementColor1('text-orange-500')
@@ -236,27 +345,203 @@ export default function TwoPlayerPlay() {
       </div>
     )
   }
-  if (!started)
+  if (!started) {
+    // キー設定を取得
+    let p1 = ['Q', 'W', 'E', 'R']
+    let p2 = ['U', 'I', 'O', 'P']
+    try {
+      const obj = JSON.parse(localStorage.getItem('keySettings'))
+      if (obj && Array.isArray(obj.p1) && obj.p1.length === 4) p1 = obj.p1
+      if (obj && Array.isArray(obj.p2) && obj.p2.length === 4) p2 = obj.p2
+    } catch {
+      // ignore
+    }
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-black text-white text-center">
         <div className="text-2xl mb-4">
-          1Pは上のレーンからQ，W，E，Rキー
-          2PはU，I，O，Pキーを押してプレイしてね
+          1Pは上のレーンから{p1.join('，')}キー
+          <br />
+          2Pは{p2.join('，')}キーを押してプレイしてね
         </div>
         <div className="text-xl text-gray-300">タップしてスタート</div>
       </div>
     )
+  }
 
   const screenHeight = window.innerHeight
+  const screenWidth = window.innerWidth
+
+  // --- 縦画面用の描画 ---
+  if (isVertical) {
+    // 1Pフィールド
+    const p1FieldLeft = 0
+    const p1FieldWidth = screenWidth / 2
+    const p1FieldCenterX = p1FieldLeft + p1FieldWidth / 2
+    // 2Pフィールド
+    const p2FieldLeft = screenWidth / 2
+    const p2FieldWidth = screenWidth / 2
+    const p2FieldCenterX = p2FieldLeft + p2FieldWidth / 2
+
+    return (
+      <div className="relative h-screen w-screen overflow-hidden bg-black text-white">
+        {/* 1P判定表示 */}
+        <div
+          className={`absolute left-[25%] top-[40%] -translate-x-1/2 text-2xl font-bold drop-shadow transition-all duration-500 pointer-events-none z-20
+            ${visible1 ? 'opacity-100 scale-150' : 'opacity-0 scale-100'} ${judgementColor1}`}
+        >
+          {judgement1}
+        </div>
+        {/* 2P判定表示 */}
+        <div
+          className={`absolute left-[75%] top-[40%] -translate-x-1/2 text-2xl font-bold drop-shadow transition-all duration-500 pointer-events-none z-20
+            ${visible2 ? 'opacity-100 scale-150' : 'opacity-0 scale-100'} ${judgementColor2}`}
+        >
+          {judgement2}
+        </div>
+        {/* 1PリッチUI 左上（小さく） */}
+        <div className="absolute left-2 top-2 flex flex-col gap-1 z-20 items-start">
+          <div className="text-base font-extrabold text-yellow-300 drop-shadow-lg">
+            <span className="text-white text-xs align-top">Score</span>
+            <span className="ml-1 text-yellow-400 text-lg">
+              {p1ScoreRef.current.score}
+            </span>
+          </div>
+          <div className="flex gap-1 mt-1">
+            <div className="text-xs font-bold text-blue-300 bg-black/60 rounded px-1.5 py-0.5 border border-blue-400 shadow">
+              最大コンボ
+              <br />
+              <span className="text-base text-blue-200">
+                {p1MaxComboRef.current}
+              </span>
+            </div>
+            <div className="text-xs font-bold text-pink-300 bg-black/60 rounded px-1.5 py-0.5 border border-pink-400 shadow">
+              合計コンボ
+              <br />
+              <span className="text-base text-pink-200">
+                {(p1ScoreRef.current.perfect ?? 0) +
+                  (p1ScoreRef.current.good ?? 0)}
+              </span>
+            </div>
+          </div>
+        </div>
+        {/* 2PリッチUI 右上（小さく） */}
+        <div className="absolute right-2 top-2 flex flex-col gap-1 z-20 items-end">
+          <div className="text-base font-extrabold text-yellow-300 drop-shadow-lg">
+            <span className="text-white text-xs align-top">Score</span>
+            <span className="ml-1 text-yellow-400 text-lg">
+              {p2ScoreRef.current.score}
+            </span>
+          </div>
+          <div className="flex gap-1 mt-1">
+            <div className="text-xs font-bold text-blue-300 bg-black/60 rounded px-1.5 py-0.5 border border-blue-400 shadow">
+              最大コンボ
+              <br />
+              <span className="text-base text-blue-200">
+                {p2MaxComboRef.current}
+              </span>
+            </div>
+            <div className="text-xs font-bold text-pink-300 bg-black/60 rounded px-1.5 py-0.5 border border-pink-400 shadow">
+              合計コンボ
+              <br />
+              <span className="text-base text-pink-200">
+                {(p2ScoreRef.current.perfect ?? 0) +
+                  (p2ScoreRef.current.good ?? 0)}
+              </span>
+            </div>
+          </div>
+        </div>
+        {/* 1P判定枠 */}
+        {P1_LANE_Y_POS.map((y, index) => (
+          <div
+            key={`p1-hl-v-${index}`}
+            style={{
+              left: `${p1FieldCenterX - 128 + index * 64}px`,
+              top: `${screenHeight - 144}px`,
+            }}
+            className="absolute"
+          >
+            <HitLine lane={index} />
+          </div>
+        ))}
+        {/* 2P判定枠 */}
+        {P2_LANE_Y_POS.map((y, index) => (
+          <div
+            key={`p2-hl-v-${index}`}
+            style={{
+              left: `${p2FieldCenterX - 128 + index * 64}px`,
+              top: `${screenHeight - 144}px`,
+            }}
+            className="absolute"
+          >
+            <HitLine lane={index} />
+          </div>
+        ))}
+        {/* 1Pノーツ */}
+        {notes.p1
+          .filter(
+            n =>
+              !n.hit &&
+              !n.missed &&
+              Math.abs(n.time - time - offset) < WINDOW_SEC
+          )
+          .map(n => (
+            <Note
+              key={n.id}
+              x={p1FieldCenterX - 96 + n.lane * 64}
+              y={
+                screenHeight -
+                120 -
+                (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier
+              }
+              lane={n.lane}
+            />
+          ))}
+        {/* 2Pノーツ */}
+        {notes.p2
+          .filter(
+            n =>
+              !n.hit &&
+              !n.missed &&
+              Math.abs(n.time - time - offset) < WINDOW_SEC
+          )
+          .map(n => (
+            <Note
+              key={n.id}
+              x={p2FieldCenterX - 96 + n.lane * 64}
+              y={
+                screenHeight -
+                120 -
+                (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier
+              }
+              lane={n.lane}
+            />
+          ))}
+        {/* Backボタンは未開始時のみ表示 */}
+        {!started && (
+          <button
+            className="absolute left-1/2 top-4 -translate-x-1/2 px-4 py-2 bg-gray-600 text-white rounded z-30"
+            onClick={() => nav(-1)}
+          >
+            Back
+          </button>
+        )}
+        {/* 中央仕切り線 */}
+        <div className="absolute left-1/2 top-0 w-0.5 h-full bg-yellow-400 opacity-70 z-10" />
+      </div>
+    )
+  }
 
   return (
     <div className="relative h-screen overflow-hidden bg-black text-white">
+      {lowFps && (
+        <div className="fixed top-4 right-4 z-50 px-4 py-2 bg-red-600 text-white text-lg font-bold rounded shadow-lg animate-pulse">
+          ⚠️ フレームレートが低下しています（50FPS未満）
+        </div>
+      )}
       {/* --- 1P判定表示（上画面中央） --- */}
       <div
         className={`absolute top-[35%] left-1/2 transform -translate-x-1/2 text-4xl font-bold drop-shadow transition-all duration-500 pointer-events-none z-20
-          ${
-            visible1 ? 'opacity-100 scale-150' : 'opacity-0 scale-100'
-          } ${judgementColor1}`}
+          ${visible1 ? 'opacity-100 scale-150' : 'opacity-0 scale-100'} ${judgementColor1}`}
       >
         {judgement1}
       </div>
@@ -264,9 +549,7 @@ export default function TwoPlayerPlay() {
       {/* --- 2P判定表示（下画面中央） --- */}
       <div
         className={`absolute top-[75%] left-1/2 transform -translate-x-1/2 text-4xl font-bold drop-shadow transition-all duration-500 pointer-events-none z-20
-          ${
-            visible2 ? 'opacity-100 scale-150' : 'opacity-0 scale-100'
-          } ${judgementColor2}`}
+          ${visible2 ? 'opacity-100 scale-150' : 'opacity-0 scale-100'} ${judgementColor2}`}
       >
         {judgement2}
       </div>
@@ -276,8 +559,8 @@ export default function TwoPlayerPlay() {
         {P1_LANE_Y_POS.map((y, index) => (
           <div
             key={`p1-hl-${index}`}
-            style={{ top: `calc(50% + ${y}px)` }}
-            className="absolute left-0 right-0 transform -translate-y-1/2"
+            style={{ top: `calc(50% + ${y}px)`, left: `${HIT_X - 48}px` }}
+            className="absolute transform -translate-y-1/2"
           >
             <HitLine lane={index} />
           </div>
@@ -295,12 +578,41 @@ export default function TwoPlayerPlay() {
             return (
               <Note
                 key={n.id}
-                x={HIT_X + (n.time - time - offset) * NOTE_SPEED}
+                x={
+                  HIT_X +
+                  (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier
+                }
                 y={yPos}
                 lane={n.lane}
               />
             )
           })}
+        {/* 1PリッチUI 横並び */}
+        <div className="absolute left-4 top-2 flex flex-row items-center gap-2 z-20">
+          <div className="text-base font-extrabold text-yellow-300 drop-shadow-lg">
+            <span className="text-white text-xs align-top">Score</span>
+            <span className="ml-1 text-yellow-400 text-lg">
+              {p1ScoreRef.current.score}
+            </span>
+          </div>
+          <div className="flex gap-1 ml-2">
+            <div className="text-xs font-bold text-blue-300 bg-black/60 rounded px-1.5 py-0.5 border border-blue-400 shadow">
+              最大コンボ
+              <br />
+              <span className="text-base text-blue-200">
+                {p1MaxComboRef.current}
+              </span>
+            </div>
+            <div className="text-xs font-bold text-pink-300 bg-black/60 rounded px-1.5 py-0.5 border border-pink-400 shadow">
+              合計コンボ
+              <br />
+              <span className="text-base text-pink-200">
+                {(p1ScoreRef.current.perfect ?? 0) +
+                  (p1ScoreRef.current.good ?? 0)}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* --- Player 2 Field (Bottom) --- */}
@@ -308,8 +620,8 @@ export default function TwoPlayerPlay() {
         {P2_LANE_Y_POS.map((y, index) => (
           <div
             key={`p2-hl-${index}`}
-            style={{ top: `calc(50% + ${y}px)` }}
-            className="absolute left-0 right-0 transform -translate-y-1/2"
+            style={{ top: `calc(50% + ${y}px)`, left: `${HIT_X - 48}px` }}
+            className="absolute transform -translate-y-1/2"
           >
             <HitLine lane={index} />
           </div>
@@ -327,27 +639,42 @@ export default function TwoPlayerPlay() {
             return (
               <Note
                 key={n.id}
-                x={HIT_X + (n.time - time - offset) * NOTE_SPEED}
+                x={
+                  HIT_X +
+                  (n.time - time - offset) * NOTE_SPEED * noteSpeedMultiplier
+                }
                 y={yPos}
                 lane={n.lane}
               />
             )
           })}
+        {/* 2PリッチUI 横並び */}
+        <div className="absolute left-4 top-2 flex flex-row items-center gap-2 z-20">
+          <div className="text-base font-extrabold text-yellow-300 drop-shadow-lg">
+            <span className="text-white text-xs align-top">Score</span>
+            <span className="ml-1 text-yellow-400 text-lg">
+              {p2ScoreRef.current.score}
+            </span>
+          </div>
+          <div className="flex gap-1 ml-2">
+            <div className="text-xs font-bold text-blue-300 bg-black/60 rounded px-1.5 py-0.5 border border-blue-400 shadow">
+              最大コンボ
+              <br />
+              <span className="text-base text-blue-200">
+                {p2MaxComboRef.current}
+              </span>
+            </div>
+            <div className="text-xs font-bold text-pink-300 bg-black/60 rounded px-1.5 py-0.5 border border-pink-400 shadow">
+              合計コンボ
+              <br />
+              <span className="text-base text-pink-200">
+                {(p2ScoreRef.current.perfect ?? 0) +
+                  (p2ScoreRef.current.good ?? 0)}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
-
-      {/* --- スコアと戻るボタン --- */}
-      <div className="absolute left-4 top-4 text-xl">
-        1P: {p1ScoreRef.current.score}
-      </div>
-      <div className="absolute left-4 bottom-4 text-xl">
-        2P: {p2ScoreRef.current.score}
-      </div>
-      <button
-        className="absolute right-4 top-4 px-4 py-2 bg-gray-600 text-white rounded z-30"
-        onClick={() => nav(-1)}
-      >
-        Back
-      </button>
     </div>
   )
 }

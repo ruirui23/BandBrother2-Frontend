@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import SettingsModal from '../components/SettingsModal'
 import { auth } from '../firebase'
 import {
   signInWithEmailAndPassword,
@@ -20,6 +21,27 @@ import {
 } from 'react-icons/fa'
 
 const Home = () => {
+  const [showSettings, setShowSettings] = useState(false)
+  const defaultKeys = {
+    single: ['D', 'F', 'J', 'K'],
+    p1: ['Q', 'W', 'E', 'R'],
+    p2: ['U', 'I', 'O', 'P'],
+  }
+  const [keySettings, setKeySettings] = useState(() => {
+    try {
+      return {
+        ...defaultKeys,
+        ...(JSON.parse(localStorage.getItem('keySettings')) || {}),
+      }
+    } catch {
+      return defaultKeys
+    }
+  })
+  const handleSaveSettings = keys => {
+    setKeySettings(keys)
+    localStorage.setItem('keySettings', JSON.stringify(keys))
+    setShowSettings(false)
+  }
   const [showLogin, setShowLogin] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -127,17 +149,15 @@ const Home = () => {
         <div className="flex flex-col gap-6 items-center w-full max-w-xs">
           <button
             className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white text-xl font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
-            onClick={() =>
-              navigate('/select', { state: { playerId: user.uid } })
-            }
+            onClick={() => navigate('/tutorial')}
           >
-            <FaGamepad /> 一人プレイ
+            <FaMusic /> チュートリアル譜面で遊ぶ
           </button>
           <button
-            className="w-full py-4 bg-green-600 hover:bg-green-700 text-white text-xl font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
-            onClick={() => navigate('/two-player-select')}
+            className="w-full py-4 bg-pink-600 hover:bg-pink-700 text-white text-xl font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
+            onClick={() => navigate('/custom-charts')}
           >
-            <FaGamepad /> 二人プレイ
+            <FaMusic /> カスタム譜面で遊ぶ
           </button>
           <button
             className="w-full py-4 bg-yellow-500 hover:bg-yellow-600 text-white text-xl font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
@@ -151,12 +171,21 @@ const Home = () => {
           >
             <FaGamepad /> マルチプレイ
           </button>
+          {/* 設定ボタン */}
           <button
-            className="w-full py-4 bg-pink-600 hover:bg-pink-700 text-white text-xl font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
-            onClick={() => navigate('/custom-charts')}
+            className="w-full py-4 bg-gray-700 hover:bg-gray-800 text-white text-xl font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
+            onClick={() => setShowSettings(true)}
           >
-            <FaMusic /> カスタム譜面で遊ぶ
+            <span className="material-icons"></span> 設定
           </button>
+          {/* 設定モーダル */}
+          {showSettings && (
+            <SettingsModal
+              onClose={() => setShowSettings(false)}
+              onSave={handleSaveSettings}
+              initialKeys={keySettings}
+            />
+          )}
         </div>
       ) : (
         <div className="flex flex-col items-center mt-8">

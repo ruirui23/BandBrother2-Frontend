@@ -5,19 +5,28 @@ import useGameLoop from './useGameLoop'
 import { HIT_X, NOTE_SPEED, WINDOW_SEC } from '../constants'
 import { playHitSound } from '../utils/soundEffects'
 
+// 共通の判定定数
 const JUDGE = { perfect: 24, good: 48 }
 
-// キーとレーンのマッピング
-const KEY_TO_LANE = {
+// デフォルトのキーとレーンのマッピング
+const DEFAULT_KEY_TO_LANE = {
   KeyD: 0,
   KeyF: 1,
   KeyJ: 2,
   KeyK: 3,
 }
-const VALID_KEYS = Object.keys(KEY_TO_LANE)
+const DEFAULT_VALID_KEYS = Object.keys(DEFAULT_KEY_TO_LANE)
 
-export default function useRhythmGame(songData, difficulty, onGameEnd) {
-  const { add, reset, counts, score } = useScore()
+/**
+ * 共通ゲームロジック
+ * シングルプレイ・マルチプレイ共通のコアゲーム機能を提供
+ */
+export default function useGameCore(songData, difficulty, onGameEnd, keyMaps) {
+  const { add, reset, counts, score } = useScore() // スコア管理用のフック
+
+  // キー設定
+  const KEY_TO_LANE = keyMaps?.KEY_TO_LANE || DEFAULT_KEY_TO_LANE
+  const VALID_KEYS = keyMaps?.VALID_KEYS || DEFAULT_VALID_KEYS
 
   // songDataの構造を安全にチェック
   const difficulties = songData?.difficulty || {}
@@ -28,8 +37,16 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
   )
   const offset = songData?.offset ?? 0
 
+  // ゲーム状態
   const notesRef = useRef([])
   const [notes, setNotes] = useState([])
+  const [started, setStarted] = useState(false)
+  const [time, setTime] = useState(0)
+  const [gameState, setGameState] = useState('waiting')
+  const [sound, setSound] = useState(null)
+
+  const gameStateRef = useRef(gameState)
+  gameStateRef.current = gameState
 
   // ノーツ初期化
   useEffect(() => {
@@ -43,13 +60,6 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
       }))
     setNotes(notesRef.current)
   }, [rawNotes])
-  const [started, setStarted] = useState(false)
-  const [sound, setSound] = useState(null)
-  const [time, setTime] = useState(0)
-  const [gameState, setGameState] = useState('waiting')
-
-  const gameStateRef = useRef(gameState)
-  gameStateRef.current = gameState
 
   // 音声ファイル初期化
   useEffect(() => {
@@ -62,12 +72,10 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
 
     // クリーンアップ: 前の音声を停止・削除
     return () => {
-      if (sound) {
-        sound.stop()
-        sound.unload()
-      }
+      newSound.stop()
+      newSound.unload()
     }
-  }, [songData?.audio, sound])
+  }, [songData?.audio])
 
   // ゲーム初期化
   useEffect(() => {
@@ -89,24 +97,99 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
       setGameState('playing')
       sound.seek(0)
       sound.play()
-
-      // オーディオコンテキストを有効化（ユーザーインタラクションが必要）
       console.log('Game started successfully! State set to playing.')
     }
   }, [started, sound])
 
-  // 15秒でゲーム終了
+  // ゲーム終了 (曲終了時または全ノーツ処理完了時)
   useEffect(() => {
-    if (started && time >= 15 && gameState === 'playing' && sound) {
-      setGameState('finished')
-      sound.stop()
-      if (onGameEnd) {
-        onGameEnd({ counts, score, time })
+    if (started && gameState === 'playing' && sound) {
+      const duration = sound.duration ? sound.duration() : null
+      const allNotesProcessed = notesRef.current.every(n => n.hit || n.missed)
+
+      // 曲が終了した場合、または全ノーツが処理された場合にゲーム終了
+      if ((duration && time >= duration - 0.05) || allNotesProcessed) {
+        setGameState('finished')
+        sound.stop()
+        if (onGameEnd) {
+          onGameEnd({
+            counts,
+            score,
+            maxCombo: maxComboRef.current,
+            lastCombo: comboRef.current,
+          })
+        }
       }
     }
   }, [time, started, gameState, counts, score, onGameEnd, sound])
 
-  // キー入力判定
+  // 判定結果コールバック用の状態
+  const onJudgmentRef = useRef(() => {})
+  const setOnJudgment = useCallback(callback => {
+    onJudgmentRef.current = callback || (() => {})
+  }, [])
+
+  // --- combo, maxCombo管理 ---
+  const comboRef = useRef(0)
+  const maxComboRef = useRef(0)
+
+  // 共通のノーツ判定ロジック
+  const judgeNote = useCallback(
+    (lane, currentTime) => {
+      // 押されたキーに対応するレーンの中で、最も判定ラインに近いノーツを探す
+      let bestMatchIndex = -1
+      let minDistance = Infinity
+
+      notesRef.current.forEach((n, index) => {
+        if (n.lane !== lane || n.hit || n.missed) return
+
+        const distance = Math.abs(
+          HIT_X - (HIT_X + (n.time - currentTime - offset) * NOTE_SPEED)
+        )
+
+        if (distance < JUDGE.good && distance < minDistance) {
+          minDistance = distance
+          bestMatchIndex = index
+        }
+      })
+
+      if (bestMatchIndex === -1) {
+        return null // ヒット可能なノーツなし
+      }
+
+      const note = notesRef.current[bestMatchIndex]
+      let judgmentType = 'good'
+
+      if (minDistance < JUDGE.perfect) {
+        add('perfect')
+        judgmentType = 'perfect'
+      } else {
+        add('good')
+        judgmentType = 'good'
+      }
+
+      // 効果音を再生
+      playHitSound()
+
+      // 判定結果をコールバック
+      onJudgmentRef.current(judgmentType)
+
+      // ノーツを「ヒット済み」にマーク
+      note.hit = true
+      setNotes([...notesRef.current])
+
+      // コンボ数を更新
+      comboRef.current++
+      if (comboRef.current > maxComboRef.current) {
+        maxComboRef.current = comboRef.current
+      }
+
+      return { judgmentType, note }
+    },
+    [offset, add, KEY_TO_LANE, VALID_KEYS]
+  )
+
+  // キー入力処理
   const handleKeyPress = useCallback(
     e => {
       console.log(
@@ -135,44 +218,12 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
         notesRef.current.length
       )
 
-      // 押されたキーに対応するレーンの中で、最も判定ラインに近いノーツを探す
-      let bestMatchIndex = -1
-      let minDistance = Infinity
-
-      notesRef.current.forEach((n, index) => {
-        if (n.lane !== lane || n.hit || n.missed) return
-
-        const distance = Math.abs(
-          HIT_X - (HIT_X + (n.time - currentTime - offset) * NOTE_SPEED)
-        )
-
-        if (distance < JUDGE.good && distance < minDistance) {
-          minDistance = distance
-          bestMatchIndex = index
-        }
-      })
-
-      if (bestMatchIndex === -1) {
-        // 対応レーンに叩けるノーツがなければ何もしない
-        return
+      const result = judgeNote(lane, currentTime)
+      if (result) {
+        console.log(`${result.judgmentType} hit!`)
       }
-
-      const note = notesRef.current[bestMatchIndex]
-      if (minDistance < JUDGE.perfect) {
-        add('perfect')
-        console.log('Perfect hit!')
-      } else {
-        add('good')
-        console.log('Good hit!')
-      }
-
-      // 効果音を再生
-      playHitSound()
-
-      note.hit = true
-      setNotes([...notesRef.current]) // Force re-render
     },
-    [time, started, gameState, add, offset]
+    [time, started, gameState, judgeNote]
   )
 
   // キーイベントリスナー
@@ -195,13 +246,13 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
   useEffect(() => {
     if (gameState !== 'playing' || !started) return
     let missedAny = false
+
     const updatedNotes = notesRef.current.map(n => {
       if (!n.hit && !n.missed && time - (n.time - offset) > 0.2) {
         add('miss')
+        comboRef.current = 0 // ★ミス時にコンボリセット
         console.log('Miss detected!')
-        console.log('About to call playHitSound for miss...')
-        playHitSound() // ミス音を再生
-        console.log('Called playHitSound for miss')
+        onJudgmentRef.current('miss') // 判定結果をコールバック
         missedAny = true
         return { ...n, missed: true }
       }
@@ -218,12 +269,14 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
   const visibleNotes = notes.filter(
     n =>
       !n.hit &&
+      !n.missed &&
       n.time - time < WINDOW_SEC &&
       HIT_X + (n.time - time - offset) * NOTE_SPEED > -100 &&
       HIT_X + (n.time - time - offset) * NOTE_SPEED < window.innerWidth + 100
   )
 
   return {
+    // ゲーム状態
     notes: visibleNotes,
     time,
     offset,
@@ -232,7 +285,19 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
     score,
     counts,
     sound,
+    combo: comboRef.current,
+    maxCombo: maxComboRef.current,
+
+    // メソッド
     startGame,
     setGameState,
+    judgeNote,
+    handleKeyPress,
+    setOnJudgment,
+
+    // 定数 (外部で必要な場合)
+    JUDGE,
+    KEY_TO_LANE,
+    VALID_KEYS,
   }
 }

@@ -5,7 +5,9 @@ import {
   Navigate,
   useLocation,
 } from 'react-router-dom'
+import { WiiboardProvider } from './context/WiiboardContext'
 import Home from './pages/Home.jsx'
+import TutorialMenu from './pages/TutorialMenu.jsx'
 import SelectDifficulty from './pages/SelectDifficulty.jsx'
 import SelectDifficultyMulti from './pages/SelectDifficultyMulti.jsx'
 import Play from './pages/Play.jsx'
@@ -21,6 +23,7 @@ import MultiPlay from './pages/MultiPlay.jsx'
 import MultiMusicSelect from './pages/MultiMusicSelect.jsx'
 import { auth } from './firebase'
 import { useEffect, useState } from 'react'
+import WiiboardMonitor from './components/WiiboardMonitor'
 
 function RequireAuth({ children }) {
   const [user, setUser] = useState(auth.currentUser)
@@ -36,104 +39,119 @@ function RequireAuth({ children }) {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route
-          path="/select"
-          element={
-            <RequireAuth>
-              <SelectDifficulty />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/select/:musicId"
-          element={
-            <RequireAuth>
-              <SelectDifficulty />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/select-difficulty/:roomId"
-          element={<SelectDifficultyMulti />}
-        />
-        <Route
-          path="/play/:musicId/:difficulty"
-          element={
-            <RequireAuth>
-              <Play />
-            </RequireAuth>
-          }
-        />
-        <Route path="/multi-play/:roomId/:difficulty" element={<MultiPlay />} />
-        <Route path="/result" element={<Result />} />
-        <Route
-          path="/multi-music-select"
-          element={
-            <RequireAuth>
-              <MultiMusicSelect />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/match"
-          element={
-            <RequireAuth>
-              <MatchRoom />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/two-player-select"
-          element={
-            <RequireAuth>
-              <TwoPlayerSelect />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/play2/:musicId/:p1/:p2"
-          element={
-            <RequireAuth>
-              <TwoPlayerPlay />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/chart-editor"
-          element={
-            <RequireAuth>
-              <ChartEditor />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/custom-charts"
-          element={
-            <RequireAuth>
-              <CustomCharts />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/play/custom/:chartId"
-          element={
-            <RequireAuth>
-              <PlayCustom />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/twoplayer/play/custom/:chartId"
-          element={
-            <RequireAuth>
-              <TwoPlayerPlayCustom />
-            </RequireAuth>
-          }
-        />
-      </Routes>
-    </BrowserRouter>
+    <WiiboardProvider>
+      <BrowserRouter>
+        <WiiboardMonitor />
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/tutorial" element={<TutorialMenu />} />
+          <Route
+            path="/select"
+            element={
+              <RequireAuth>
+                <SelectDifficulty />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/select/:musicId"
+            element={
+              <RequireAuth>
+                <SelectDifficulty />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/select-difficulty/:roomId"
+            element={<SelectDifficultyMulti />}
+          />
+          <Route
+            path="/play/:musicId/:difficulty"
+            element={
+              <RequireAuth>
+                <Play />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/multi-play/:roomId/:difficulty"
+            element={<MultiPlay />}
+          />
+          <Route path="/result" element={<Result />} />
+          <Route
+            path="/multi-music-select"
+            element={
+              <RequireAuth>
+                <MultiMusicSelect />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/match"
+            element={
+              <RequireAuth>
+                <MatchRoom />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/two-player-select"
+            element={
+              <RequireAuth>
+                <TwoPlayerSelect />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/play2/:musicId/:p1/:p2"
+            element={
+              <RequireAuth>
+                <TwoPlayerPlay />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/chart-editor"
+            element={
+              <RequireAuth>
+                <ChartEditor />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/custom-charts"
+            element={
+              <RequireAuth>
+                <CustomCharts />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/play/custom/:chartId"
+            element={
+              <RequireAuth>
+                <PlayCustom />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/twoplayer/play/custom/:chartId"
+            element={
+              <RequireAuth>
+                <TwoPlayerPlayCustom />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/twoplayer/play/tutorial/:difficulty"
+            element={
+              <RequireAuth>
+                <TwoPlayerPlay />
+              </RequireAuth>
+            }
+          />
+        </Routes>
+      </BrowserRouter>
+    </WiiboardProvider>
   )
 }
