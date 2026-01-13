@@ -80,12 +80,14 @@ const EditorLane = React.memo(
         const x = e.clientX - rect.left
         const time = duration * (x / gridWidth)
 
-        const proximityThreshold = duration * ((NOTE_RADIUS * 2) / gridWidth)
+        // ノーツの真ん中をクリックした場合のみ削除
+        const proximityThreshold = duration * ((NOTE_RADIUS * 0.7) / gridWidth)
         const foundIndex = notes.findIndex(
           n => n.lane === lane && Math.abs(n.time - time) < proximityThreshold
         )
 
         if (foundIndex !== -1) {
+          // ノーツの中心付近のみ削除
           onNotesChange(notes.filter((_, i) => i !== foundIndex))
         } else {
           playHitSound()
