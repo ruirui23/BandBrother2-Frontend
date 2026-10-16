@@ -1,6 +1,6 @@
 # バンドブラザー２デプロイURL
 
-https://bandbrother2-2764c.web.app
+https://frontend-ugx7tb3anq-an.a.run.app
 
 # フロントエンドリポジトリ
 

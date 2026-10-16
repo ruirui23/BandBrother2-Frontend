@@ -4,13 +4,12 @@ import { getFirestore } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
 
 const firebaseConfig = {
-  apiKey: 'AIzaSyBEaGNPnuwDc8XM0wVLm9CKwzr_fujc8lU',
-  authDomain: 'bandbrother2-2764c.firebaseapp.com',
-  projectId: 'bandbrother2-2764c',
-  storageBucket: 'bandbrother2-2764c.firebasestorage.app',
-  messagingSenderId: '239349969556',
-  appId: '1:239349969556:web:0559f3832faee4d54eba81',
-  measurementId: 'G-R86LWKL3YD',
+  apiKey: 'AIzaSyDqlY3JoOEeSYvf-eP5SQ3pQD_nunjqEXc',
+  authDomain: 'bandbrother2.firebaseapp.com',
+  projectId: 'bandbrother2',
+  storageBucket: 'bandbrother2-storage',
+  messagingSenderId: '1060861693188',
+  appId: '1:1060861693188:web:6c3ee2a06c1e0c677e9451',
 }
 
 const app = initializeApp(firebaseConfig)
