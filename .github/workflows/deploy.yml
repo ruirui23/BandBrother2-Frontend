@@ -1,0 +1,59 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+# インフラは https://github.com/KOU050223/BandBrother2-infra で管理
+env:
+  PROJECT_ID: bandbrother2
+  REGION: asia-northeast1
+  SERVICE: frontend
+  IMAGE: asia-northeast1-docker.pkg.dev/bandbrother2/bandbrother2/frontend
+  WORKLOAD_IDENTITY_PROVIDER: projects/1060861693188/locations/global/workloadIdentityPools/github/providers/github-actions
+  DEPLOY_SERVICE_ACCOUNT: github-deployer@bandbrother2.iam.gserviceaccount.com
+  RUN_SERVICE_ACCOUNT: bandbrother2-run@bandbrother2.iam.gserviceaccount.com
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # Workload Identity Federation に必要
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.DEPLOY_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and push
+        env:
+          VITE_RAILS_URL: ${{ secrets.VITE_RAILS_URL }}
+          VITE_GO_URL: ${{ secrets.VITE_GO_URL }}
+          VITE_WS_URL: ${{ secrets.VITE_WS_URL }}
+        run: |
+          docker build \
+            --build-arg VITE_RAILS_URL="$VITE_RAILS_URL" \
+            --build-arg VITE_GO_URL="$VITE_GO_URL" \
+            --build-arg VITE_WS_URL="$VITE_WS_URL" \
+            -t "$IMAGE:$GITHUB_SHA" \
+            -t "$IMAGE:latest" \
+            .
+          docker push --all-tags "$IMAGE"
+
+      - name: Deploy
+        run: |
+          gcloud run deploy "$SERVICE" \
+            --image "$IMAGE:$GITHUB_SHA" \
+            --region "$REGION" \
+            --service-account "$RUN_SERVICE_ACCOUNT" \
+            --quiet
