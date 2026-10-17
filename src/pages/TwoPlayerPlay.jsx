@@ -1,4 +1,5 @@
 // 255:13 error  Empty block statement  no-empty
+import { getLaneJudgeOffsetSec } from '../utils/judgeOffset'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { Howl } from 'howler'
@@ -205,7 +206,11 @@ export default function TwoPlayerPlay() {
 
     let p1Changed = false
     const p1NewNotes = notes.p1.map(n => {
-      if (!n.hit && !n.missed && currentTime - (n.time - offset) > 0.2) {
+      if (
+        !n.hit &&
+        !n.missed &&
+        currentTime - (n.time - offset + getLaneJudgeOffsetSec(n.lane)) > 0.2
+      ) {
         p1ScoreRef.current.miss++
         showJudgement1('Miss')
         setJudgementColor1('text-blue-400')
@@ -219,7 +224,11 @@ export default function TwoPlayerPlay() {
 
     let p2Changed = false
     const p2NewNotes = notes.p2.map(n => {
-      if (!n.hit && !n.missed && currentTime - (n.time - offset) > 0.2) {
+      if (
+        !n.hit &&
+        !n.missed &&
+        currentTime - (n.time - offset + getLaneJudgeOffsetSec(n.lane)) > 0.2
+      ) {
         p2ScoreRef.current.miss++
         showJudgement2('Miss')
         setJudgementColor2('text-blue-400')
@@ -271,7 +280,7 @@ export default function TwoPlayerPlay() {
         const distance = Math.abs(
           HIT_X -
             (HIT_X +
-              (n.time - currentTime - offset) *
+              (n.time - currentTime - offset + getLaneJudgeOffsetSec(n.lane)) *
                 NOTE_SPEED *
                 noteSpeedMultiplier)
         )
