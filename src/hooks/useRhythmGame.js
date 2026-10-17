@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { getLaneJudgeOffsetSec } from '../utils/judgeOffset'
 import { Howl } from 'howler'
 import { useScore } from '../store'
 import useGameLoop from './useGameLoop'
@@ -143,7 +144,10 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
         if (n.lane !== lane || n.hit || n.missed) return
 
         const distance = Math.abs(
-          HIT_X - (HIT_X + (n.time - currentTime - offset) * NOTE_SPEED)
+          HIT_X -
+            (HIT_X +
+              (n.time - currentTime - offset + getLaneJudgeOffsetSec(n.lane)) *
+                NOTE_SPEED)
         )
 
         if (distance < JUDGE.good && distance < minDistance) {
@@ -196,7 +200,11 @@ export default function useRhythmGame(songData, difficulty, onGameEnd) {
     if (gameState !== 'playing' || !started) return
     let missedAny = false
     const updatedNotes = notesRef.current.map(n => {
-      if (!n.hit && !n.missed && time - (n.time - offset) > 0.2) {
+      if (
+        !n.hit &&
+        !n.missed &&
+        time - (n.time - offset + getLaneJudgeOffsetSec(n.lane)) > 0.2
+      ) {
         add('miss')
         console.log('Miss detected!')
         console.log('About to call playHitSound for miss...')

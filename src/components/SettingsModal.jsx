@@ -3,6 +3,12 @@ import { ALL_SE_FILES } from '../utils/soundEffects'
 import { useGameLayout } from '../store'
 import { useWiiboard } from '../context/WiiboardContext'
 import useSimpleJoycon from '../hooks/useSimpleJoycon'
+import {
+  JUDGE_OFFSET_MIN,
+  JUDGE_OFFSET_MAX,
+  getLaneJudgeOffsetsMs,
+  setLaneJudgeOffsetMs,
+} from '../utils/judgeOffset'
 
 const defaultKeys = {
   single: ['D', 'F', 'J', 'K'],
@@ -33,6 +39,9 @@ export default function SettingsModal({ onClose, onSave, initialKeys }) {
     }
   })
 
+  // ノーツ判定調整(レーンごとのms)
+  const [laneOffsets, setLaneOffsets] = useState(getLaneJudgeOffsetsMs)
+
   const { enabled, toggleEnabled } = useWiiboard()
 
   // ジョイコン機能
@@ -54,6 +63,10 @@ export default function SettingsModal({ onClose, onSave, initialKeys }) {
     const val = parseFloat(e.target.value)
     setNoteSpeed(val)
     localStorage.setItem('noteSpeedMultiplier', val)
+  }
+
+  const handleLaneOffsetChange = (lane, e) => {
+    setLaneOffsets(setLaneJudgeOffsetMs(lane, parseInt(e.target.value, 10)))
   }
 
   const handleKeyDown = e => {
@@ -122,6 +135,36 @@ export default function SettingsModal({ onClose, onSave, initialKeys }) {
               </option>
             ))}
           </select>
+        </div>
+        {/* ノーツ判定調整 */}
+        <div className="mb-6">
+          <div className="font-semibold mb-2">ノーツ判定調整</div>
+          <div className="flex flex-col gap-2">
+            {laneOffsets.map((ms, lane) => (
+              <div key={lane} className="flex items-center gap-2">
+                <span className="w-14 font-mono font-bold">
+                  {lane + 1}レーン({keys.single[lane]})
+                </span>
+                <input
+                  type="range"
+                  className="flex-1"
+                  min={JUDGE_OFFSET_MIN}
+                  max={JUDGE_OFFSET_MAX}
+                  step={5}
+                  value={ms}
+                  onChange={e => handleLaneOffsetChange(lane, e)}
+                />
+                <span className="w-16 text-right font-mono">
+                  {ms > 0 ? '+' : ''}
+                  {ms}ms
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="text-gray-600 text-sm mt-1">
+            キーボード・Joy-Con・Wiiバランスボードなど、入力デバイスごとの遅延差をレーン単位で補正します。
+            + で判定を遅らせ、− で早めます。
+          </div>
         </div>
         {/* WebSocket連携設定 */}
         <div className="flex items-center gap-4 mb-6">

@@ -1,4 +1,5 @@
 import { playHitSound } from '../utils/soundEffects'
+import { getLaneJudgeOffsetSec } from '../utils/judgeOffset'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import useGameLoop from '../hooks/useGameLoop'
 import { useParams, useNavigate } from 'react-router-dom'
@@ -122,7 +123,11 @@ export default function PlayCustom() {
 
     // Miss判定
     notesRef.current = notesRef.current.map(n => {
-      if (!n.hit && !n.missed && newTime - (n.time - offset) > 0.2) {
+      if (
+        !n.hit &&
+        !n.missed &&
+        newTime - (n.time - offset + getLaneJudgeOffsetSec(n.lane)) > 0.2
+      ) {
         playHitSound()
         showJudgement('Miss', 'text-blue-400')
         setScore(s => {
@@ -248,7 +253,7 @@ export default function PlayCustom() {
         const distance = Math.abs(
           HIT_X -
             (HIT_X +
-              (n.time - currentTime - offset) *
+              (n.time - currentTime - offset + getLaneJudgeOffsetSec(n.lane)) *
                 NOTE_SPEED *
                 noteSpeedMultiplier)
         )
